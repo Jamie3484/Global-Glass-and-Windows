@@ -1,0 +1,6 @@
+{
+  "name": "GLOBAL GLASS AND WINDOWS",
+  "description": "Site officiel de GLOBAL GLASS AND WINDOWS — Vente, fabrication et solutions sur mesure en verre, miroirs, fenêtres, portes et aluminium à Petit-Goâve, Haïti.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
