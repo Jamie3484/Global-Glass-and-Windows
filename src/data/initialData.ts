@@ -70,10 +70,10 @@ export const INITIAL_CATEGORIES: ProductCategory[] = [
   },
   {
     id: 'cat-doors-closer',
-    name: 'Doors Closeur / Ferme-Portes',
-    nameHt: 'Fèm-Pòt Automatik',
+    name: 'Door Closer / Ferme-Portes',
+    nameHt: 'Fèm-Pòt Automatik (Door Closer)',
     nameEn: 'Door Closers',
-    slug: 'doors-closeur',
+    slug: 'door-closer',
     description: 'Ferme-portes hydrauliques robustes pour portes en verre et aluminium, pivots de sol et amortisseurs.',
     order: 6,
     iconName: 'Compass',
@@ -262,8 +262,8 @@ export const INITIAL_PRODUCTS: Product[] = [
     images: [
       {
         id: 'img-p5-1',
-        url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1000&q=80',
-        alt: 'Ferme-porte hydraulique robuste',
+        url: '/assets/haitian_technician_door_closer.jpg',
+        alt: 'Technicien haïtien en uniforme maillot violet GLOBAL GLASS AND WINDOWS installant un ferme-porte hydraulique',
         isPrimary: true,
         order: 1
       }
@@ -316,7 +316,7 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Vente en gros et au détail de verre clair, teinté (bronze, gris), feuilleté et trempé à la découpe.',
     fullDesc: 'Nous fournissons du verre de haute qualité pour tous vos chantiers résidentiels, commerciaux et industriels. Découpe numérique et façonnage des bords avec précision.',
     icon: 'Layers',
-    image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_artisan_glass_cutting.jpg',
     features: ['Verre clair 3mm à 12mm', 'Verre teinté bronze et fumé gris', 'Verre feuilleté securit 33.2 / 44.2', 'Verre trempé grande dimension'],
     order: 1,
     isFeatured: true
@@ -355,7 +355,7 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Vis inox, charnières, poignées, serrures, roulettes, joints d’étanchéité et outillage spécialisé.',
     fullDesc: 'Tout l’outillage et la quincaillerie indispensables aux professionnels et particuliers : visières, ventouses de vitrier, silicones neutres et colles structurales.',
     icon: 'Wrench',
-    image: 'https://images.unsplash.com/photo-1581783342308-f792dbdd27c5?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_technician_door_closer.jpg',
     features: ['Visserie inox tous calibres', 'Poignées aluminium & inox 304', 'Roulettes à roulement étanche', 'Silicone pro anti-moisissure'],
     order: 4,
     isFeatured: true
@@ -381,7 +381,7 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Assemblage de fenêtres coulissantes, jalousies, fenêtres françaises et impostes haute performance.',
     fullDesc: 'Nos techniciens fabriquent dans nos ateliers de Petit-Goâve des fenêtres sur mesure adaptées aux conditions architecturales et climatiques d’Haïti.',
     icon: 'Grid',
-    image: 'https://images.unsplash.com/photo-1509644851169-2acc08aa25b5?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_installation_team.jpg',
     features: ['Fenêtres 2, 3 et 4 vantaux', 'Fenêtres à soufflet et basculantes', 'Jalousies vitrées et aluminium', 'Intégration de moustiquaires'],
     order: 6,
     isFeatured: true
@@ -394,7 +394,7 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Pose experte sur site par des équipes qualifiées avec garantie d’étanchéité et d’isolation.',
     fullDesc: 'Nous intervenons directement sur vos chantiers avec nos camions équipés pour garantir une mise en place au millimètre, sans fuite d’air ni d’eau.',
     icon: 'Hammer',
-    image: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_installation_team.jpg',
     features: ['Pose en neuf et rénovation', 'Calage de précision au laser', 'Jointoiement étanche garanti', 'Respect des délais convenus'],
     order: 7,
     isFeatured: false
@@ -407,7 +407,7 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Mise en œuvre soignée de systèmes de portes battantes, va-et-vient et coulissantes.',
     fullDesc: 'Installation de rails encastrés, pivots au sol et ferme-portes hydrauliques pour une utilisation sans effort et une durée de vie maximale.',
     icon: 'ShieldCheck',
-    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_technician_door_closer.jpg',
     features: ['Fixation des pivots de sol', 'Ajustement parfait des jeux', 'Vérification du freinage', 'Test d’endurance sur place'],
     order: 8,
     isFeatured: false
@@ -459,7 +459,7 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Relevé précis de vos cotes par nos métreurs expérimentés avec équipement laser.',
     fullDesc: 'Nous nous déplaçons directement chez vous pour inspecter les ouvertures, vérifier les niveaux et garantir un dimensionnement irréprochable.',
     icon: 'Ruler',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_installation_team.jpg',
     features: ['Prise de cote laser de précision', 'Diagnostic des supports et maçonneries', 'Conseils sur les ouvertures', 'Déplacement à Petit-Goâve et environs'],
     order: 12,
     isFeatured: false
@@ -485,153 +485,16 @@ export const INITIAL_SERVICES: Service[] = [
     shortDesc: 'Orientation personnalisée dans le choix des verres, épaisseurs, finitions et quincaillerie.',
     fullDesc: 'Bénéficiez de l’expérience de GLOBAL GLASS AND WINDOWS pour choisir les matériaux les plus adaptés à vos besoins et à votre budget.',
     icon: 'Lightbulb',
-    image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
+    image: '/assets/haitian_delivery_team_truck.jpg',
     features: ['Devis détaillé sous 24h', 'Échantillons de verre et profilés', 'Conseils d’entretien', 'Service après-vente dédié'],
     order: 14,
     isFeatured: false
   }
 ];
 
-export const INITIAL_PROJECTS: Project[] = [
-  {
-    id: 'proj-1',
-    title: 'Villa Moderne avec Baies Vitrées Coulissantes',
-    titleHt: 'Villa Modèn ak Gwo Ba Vitre',
-    titleEn: 'Modern Villa with Panoramic Sliding Glass',
-    description: 'Fabrication et installation de 6 grandes baies vitrées coulissantes en aluminium noir avec verre trempé 10mm teinté anti-chaleur.',
-    category: 'portes',
-    location: 'Petit-Goâve, Haïti',
-    date: '2026-01-20',
-    hasBeforeAfter: true,
-    beforeImage: 'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?auto=format&fit=crop&w=1000&q=80',
-    afterImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80',
-    images: [
-      {
-        id: 'pimg-1-1',
-        url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80',
-        caption: 'Vue d’ensemble des baies vitrées terminées',
-        type: 'after'
-      },
-      {
-        id: 'pimg-1-2',
-        url: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80',
-        caption: 'Finition aluminium et rails coulissants encastrés',
-        type: 'standard'
-      }
-    ],
-    isFeatured: true,
-    client: 'Résidence Privée'
-  },
-  {
-    id: 'proj-2',
-    title: 'Façade Vitrée & Vitrine Magasin Commercial',
-    titleHt: 'Fasad Vit & Vitrin Magazen Komèsyal',
-    titleEn: 'Commercial Storefront Glass Facade',
-    description: 'Installation d’une vitrine de 18 mètres linéaires en verre feuilleté sécurit avec portes battantes automatiques.',
-    category: 'commercial',
-    location: 'Rte Nle #2, Petit-Goâve',
-    date: '2026-02-10',
-    hasBeforeAfter: true,
-    beforeImage: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1000&q=80',
-    afterImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80',
-    images: [
-      {
-        id: 'pimg-2-1',
-        url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
-        caption: 'Façade en verre trempé haute luminosité',
-        type: 'after'
-      }
-    ],
-    isFeatured: true,
-    client: 'Centre Commercial Soldat'
-  },
-  {
-    id: 'proj-3',
-    title: 'Rénovation Complète de Fenêtres Résidentielles',
-    titleHt: 'Renovasyon Fenèt Rezidansyèl',
-    titleEn: 'Residential Window Modernization',
-    description: 'Remplacement d’anciennes ouvertures en bois par des fenêtres françaises en aluminium blanc et verre teinté bronze 6mm.',
-    category: 'fenetres',
-    location: 'Grand-Goâve, Haïti',
-    date: '2026-02-18',
-    hasBeforeAfter: true,
-    beforeImage: 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1000&q=80',
-    afterImage: 'https://images.unsplash.com/photo-1509644851169-2acc08aa25b5?auto=format&fit=crop&w=1000&q=80',
-    images: [
-      {
-        id: 'pimg-3-1',
-        url: 'https://images.unsplash.com/photo-1509644851169-2acc08aa25b5?auto=format&fit=crop&w=1200&q=80',
-        caption: 'Fenêtres aluminium neuves avec isolation renforcée',
-        type: 'after'
-      }
-    ],
-    isFeatured: true,
-    client: 'Famille Estimé'
-  },
-  {
-    id: 'proj-4',
-    title: 'Cabines de Douche à l’Italienne sur Mesure',
-    titleHt: 'Kabin Douch Italyèn sou Mezi',
-    titleEn: 'Custom Italian Glass Showers',
-    description: 'Aménagement de 4 salles de bain avec parois en verre clair trempé 10mm et profilés inox brossé.',
-    category: 'douches',
-    location: 'Léogâne, Haïti',
-    date: '2026-02-24',
-    hasBeforeAfter: false,
-    images: [
-      {
-        id: 'pimg-4-1',
-        url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80',
-        caption: 'Douche avec verre securit et ferrures élégantes',
-        type: 'standard'
-      }
-    ],
-    isFeatured: false,
-    client: 'Hôtel Palmier'
-  }
-];
+export const INITIAL_PROJECTS: Project[] = [];
 
-export const INITIAL_VIDEOS: VideoItem[] = [
-  {
-    id: 'vid-1',
-    title: 'Découpe et Façonnage de Verre en Atelier',
-    titleHt: 'Koupe ak Fasonnaj Vè nan Atelye a',
-    titleEn: 'Glass Cutting and Polishing in Workshop',
-    description: 'Découvrez les coulisses de notre atelier à Petit-Goâve : découpe au diamant, biseautage de miroirs et contrôle qualité.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
-    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', // Can be replaced in admin
-    category: 'fabrication',
-    date: '2026-02-05',
-    status: 'published',
-    order: 1
-  },
-  {
-    id: 'vid-2',
-    title: 'Installation d’une Baie Vitrée Coulissante sur Chantier',
-    titleHt: 'Enstalasyon yon Gwo Ba Vitre sou Chantye',
-    titleEn: 'On-Site Sliding Glass Installation',
-    description: 'Nos techniciens en action avec le camion de service pour la livraison et la pose minutieuse de profilés aluminium.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=800&q=80',
-    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    category: 'installation',
-    date: '2026-02-15',
-    status: 'published',
-    order: 2
-  },
-  {
-    id: 'vid-3',
-    title: 'Présentation Officielle de GLOBAL GLASS AND WINDOWS',
-    titleHt: 'Prezantasyon Ofisyèl GLOBAL GLASS AND WINDOWS',
-    titleEn: 'Official GLOBAL GLASS AND WINDOWS Showcase',
-    description: 'Visite de nos locaux à Borne Soldat, Petit-Goâve, notre stock de verre, aluminium et quincaillerie.',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
-    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    category: 'presentation',
-    date: '2026-02-25',
-    status: 'published',
-    order: 3
-  }
-];
+export const INITIAL_VIDEOS: VideoItem[] = [];
 
 export const INITIAL_REVIEWS: CommentReview[] = [
   {

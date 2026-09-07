@@ -31,7 +31,6 @@ import { ServicesSection } from './components/sections/ServicesSection';
 import { ProjectsSection } from './components/sections/ProjectsSection';
 import { VideosSection } from './components/sections/VideosSection';
 import { ReviewsSection } from './components/sections/ReviewsSection';
-import { CalculatorSection } from './components/sections/CalculatorSection';
 import { QuoteSection } from './components/sections/QuoteSection';
 import { ContactSection } from './components/sections/ContactSection';
 
@@ -113,11 +112,6 @@ export default function App() {
     el?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleNavigateToCalculator = () => {
-    const el = document.querySelector('#calculateur');
-    el?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const handleNavigateToServices = () => {
     const el = document.querySelector('#services');
     el?.scrollIntoView({ behavior: 'smooth' });
@@ -125,26 +119,6 @@ export default function App() {
 
   const handleNavigateToContact = () => {
     const el = document.querySelector('#contact');
-    el?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleCalculatorTransfer = (data: {
-    lengthInches: number;
-    widthInches: number;
-    quantity: number;
-    glassType: string;
-    areaSqFt: number;
-    estimatedCost: number;
-  }) => {
-    setQuotePrefillProduct(data.glassType);
-    setQuotePrefillDimensions({
-      lengthInches: data.lengthInches,
-      widthInches: data.widthInches,
-      areaSqFt: data.areaSqFt,
-      glassType: data.glassType,
-      quantity: data.quantity
-    });
-    const el = document.querySelector('#devis');
     el?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -188,7 +162,7 @@ export default function App() {
           lang={lang}
           onOpenQuote={() => handleOpenQuote()}
           onNavigateToProjects={handleNavigateToProjects}
-          onNavigateToCalculator={handleNavigateToCalculator}
+          onOpenLightbox={handleOpenLightbox}
         />
 
         {/* 2. Physical Shop & Transport Truck Showcase */}
@@ -237,12 +211,14 @@ export default function App() {
           lang={lang}
           onOpenLightbox={handleOpenLightbox}
           onOpenQuote={(title) => handleOpenQuote(title)}
+          onProjectsUpdated={(updated) => setProjects(updated)}
         />
 
         {/* 7. Workshop & Installation Videos */}
         <VideosSection
           videos={videos}
           lang={lang}
+          onVideosUpdated={(updated) => setVideos(updated)}
         />
 
         {/* 8. Verified Customer Reviews & Moderation */}
@@ -252,14 +228,7 @@ export default function App() {
           onSubmitReview={handleSubmitReview}
         />
 
-        {/* 9. Glass Surface & Cost Calculator */}
-        <CalculatorSection
-          settings={settings}
-          lang={lang}
-          onTransferToQuote={handleCalculatorTransfer}
-        />
-
-        {/* 9b. Gemini AI Studio & Multi-Modal Suite */}
+        {/* 9. Gemini AI Studio & Multi-Modal Suite */}
         <GeminiAiSuite />
 
         {/* 10. Quote Request Form */}

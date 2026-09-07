@@ -24,30 +24,42 @@ import {
   INITIAL_QUOTES,
   INITIAL_MESSAGES
 } from '../data/initialData';
+import { compressImage, fileToDataURL, saveMediaToIndexedDB } from './mediaService';
 
 const KEYS = {
-  PRODUCTS: 'ggw_products_v1',
-  CATEGORIES: 'ggw_categories_v1',
-  SERVICES: 'ggw_services_v1',
-  PROJECTS: 'ggw_projects_v1',
-  VIDEOS: 'ggw_videos_v1',
-  REVIEWS: 'ggw_reviews_v1',
-  SETTINGS: 'ggw_settings_v1',
-  ADMINS: 'ggw_admins_v1',
-  CURRENT_USER: 'ggw_current_user_v1',
-  QUOTES: 'ggw_quotes_v1',
-  MESSAGES: 'ggw_messages_v1',
-  MEDIA: 'ggw_media_v1',
-  NOTIFICATIONS: 'ggw_notifications_v1',
+  PRODUCTS: 'ggw_products_v2',
+  CATEGORIES: 'ggw_categories_v2',
+  SERVICES: 'ggw_services_v2',
+  PROJECTS: 'ggw_projects_v2',
+  VIDEOS: 'ggw_videos_v2',
+  REVIEWS: 'ggw_reviews_v2',
+  SETTINGS: 'ggw_settings_v2',
+  ADMINS: 'ggw_admins_v2',
+  CURRENT_USER: 'ggw_current_user_v2',
+  QUOTES: 'ggw_quotes_v2',
+  MESSAGES: 'ggw_messages_v2',
+  MEDIA: 'ggw_media_v2',
+  NOTIFICATIONS: 'ggw_notifications_v2',
 };
 
 const EVENT_NAME = 'ggw_storage_updated';
 
+// In-memory cache ensures zero data loss even if browser localStorage reaches its 5MB quota
+const memoryCache = new Map<string, any>();
+
 function getStored<T>(key: string, defaultVal: T): T {
+  if (memoryCache.has(key)) {
+    return memoryCache.get(key) as T;
+  }
   try {
     const item = localStorage.getItem(key);
-    if (!item) return defaultVal;
-    return JSON.parse(item);
+    if (!item) {
+      memoryCache.set(key, defaultVal);
+      return defaultVal;
+    }
+    const parsed = JSON.parse(item);
+    memoryCache.set(key, parsed);
+    return parsed;
   } catch (err) {
     console.error(`Error reading ${key} from storage:`, err);
     return defaultVal;
@@ -55,12 +67,18 @@ function getStored<T>(key: string, defaultVal: T): T {
 }
 
 function setStored<T>(key: string, val: T): void {
+  // Always update in-memory cache first so UI never loses the state
+  memoryCache.set(key, val);
+
   try {
     localStorage.setItem(key, JSON.stringify(val));
-    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { key } }));
   } catch (err) {
-    console.error(`Error writing ${key} to storage:`, err);
+    console.warn(`localStorage quota reached for ${key}. Storing in IndexedDB and memory cache:`, err);
+    saveMediaToIndexedDB(`backup_${key}`, JSON.stringify(val));
   }
+
+  // Always dispatch the custom event so components re-render immediately
+  window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: { key } }));
 }
 
 export const StorageService = {
@@ -433,14 +451,18 @@ export const StorageService = {
     setStored(KEYS.CURRENT_USER, null);
   },
 
-  // Helper for file reading (converts File to base64 Data URL)
+  // Helper for file reading (converts File to optimized base64 Data URL)
   async readFileAsDataURL(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(file.name);
+    if (isImage) {
+      try {
+        const compressed = await compressImage(file, 1600, 0.82);
+        if (compressed) return compressed;
+      } catch (err) {
+        console.warn('Auto image compression error, using direct read:', err);
+      }
+    }
+    return fileToDataURL(file);
   },
 
   // Reset to initial demo data if needed

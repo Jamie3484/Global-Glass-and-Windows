@@ -44,13 +44,46 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
           </button>
         </div>
 
-        {/* Full Image */}
+        {/* Full Image or Video */}
         <div className="max-h-[75vh] flex items-center justify-center p-2 bg-black">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl"
-          />
+          {imageUrl.startsWith('data:video') ||
+          imageUrl.startsWith('blob:') ||
+          /\.(mp4|webm|mov|m4v|ogg|3gp)/i.test(imageUrl) ? (
+            <video
+              src={imageUrl}
+              controls
+              autoPlay
+              playsInline
+              className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl"
+            >
+              Votre navigateur ne supporte pas la lecture directe de cette vidéo.
+            </video>
+          ) : imageUrl.includes('youtube.com') || imageUrl.includes('youtu.be') || imageUrl.includes('vimeo.com') ? (
+            <iframe
+              src={
+                imageUrl.includes('watch?v=')
+                  ? imageUrl.replace('watch?v=', 'embed/')
+                  : imageUrl.includes('youtu.be/')
+                  ? imageUrl.replace('youtu.be/', 'www.youtube.com/embed/')
+                  : imageUrl
+              }
+              title={title}
+              className="w-full aspect-video max-h-[70vh] rounded-xl border-0"
+              allowFullScreen
+            />
+          ) : (
+            <img
+              src={imageUrl}
+              alt={title}
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.includes('unsplash')) {
+                  target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80';
+                }
+              }}
+              className="max-h-[70vh] w-auto max-w-full object-contain rounded-xl"
+            />
+          )}
         </div>
 
         {/* Footer info */}

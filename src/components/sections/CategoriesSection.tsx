@@ -6,7 +6,9 @@ import {
   FileText,
   CheckCircle2,
   Filter,
-  Tag
+  Tag,
+  Camera,
+  Video
 } from 'lucide-react';
 import { Product, ProductCategory, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
@@ -125,11 +127,27 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                     onClick={() => onSelectProduct(product)}
                     className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100 cursor-pointer"
                   >
-                    <img
-                      src={mainImg}
-                      alt={product.name}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
+                    {mainImg.startsWith('data:video') || mainImg.startsWith('blob:') || /\.(mp4|webm|mov|m4v)/i.test(mainImg) ? (
+                      <video
+                        src={mainImg}
+                        muted
+                        preload="metadata"
+                        playsInline
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <img
+                        src={mainImg}
+                        alt={product.name}
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.includes('unsplash')) {
+                            target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80';
+                          }
+                        }}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    )}
                     
                     {/* Category tag */}
                     {cat && (
@@ -142,6 +160,24 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                       <div className="absolute top-3 right-3 bg-[#B6D232] text-[#340648] font-black text-[10px] px-2.5 py-1 rounded-full shadow flex items-center gap-1 border border-white">
                         <Sparkles className="w-3 h-3" />
                         <span>Vedette</span>
+                      </div>
+                    )}
+
+                    {/* Media indicator badge (photos & videos) */}
+                    {((product.images && product.images.length > 1) || (product.videos && product.videos.length > 0) || product.videoUrl) && (
+                      <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-2 border border-white/20 shadow">
+                        {product.images && product.images.length > 1 && (
+                          <span className="flex items-center gap-1">
+                            <Camera className="w-3 h-3 text-[#B6D232]" />
+                            <span>{product.images.length}</span>
+                          </span>
+                        )}
+                        {((product.videos && product.videos.length > 0) || product.videoUrl) && (
+                          <span className="flex items-center gap-1 text-red-400">
+                            <Video className="w-3 h-3 text-red-400" />
+                            <span>{product.videos?.length || 1}</span>
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -173,20 +209,13 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Footer with Price & Actions */}
+                {/* Footer with Actions */}
                 <div className="p-6 pt-0">
                   <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-100">
                     <div>
-                      {product.price ? (
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">Estimation</span>
-                          <span className="text-base font-black text-[#340648]">
-                            ${product.price} <span className="text-xs text-slate-500 font-normal">USD</span>
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs font-black text-[#340648]">Sur Mesure</span>
-                      )}
+                      <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#340648] bg-[#B6D232]/30 px-2.5 py-1 rounded-lg">
+                        Sur Mesure
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-2">

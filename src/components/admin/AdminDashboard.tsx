@@ -25,11 +25,20 @@ import {
   Layers,
   Sparkles,
   Download,
-  RotateCcw
+  RotateCcw,
+  Upload,
+  Video,
+  Image as ImageIcon,
+  Play,
+  Check,
+  AlertCircle,
+  Film
 } from 'lucide-react';
 import {
   Product,
   ProductCategory,
+  ProductImage,
+  ProductVideo,
   Project,
   QuoteRequest,
   CommentReview,
@@ -37,6 +46,7 @@ import {
   CompanySettings
 } from '../../types';
 import { StorageService } from '../../services/storage';
+import { processImportedFile } from '../../services/mediaService';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -81,6 +91,220 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newProdDesc, setNewProdDesc] = useState('');
   const [newProdPrice, setNewProdPrice] = useState<number>(0);
   const [newProdImg, setNewProdImg] = useState('');
+  const [newProdImages, setNewProdImages] = useState<ProductImage[]>([]);
+  const [newProdVideos, setNewProdVideos] = useState<ProductVideo[]>([]);
+  const [newVideoUrlInput, setNewVideoUrlInput] = useState('');
+  const [isProcessingMedia, setIsProcessingMedia] = useState(false);
+
+  // Dedicated Media Manager for existing products
+  const [managingProduct, setManagingProduct] = useState<Product | null>(null);
+  const [editImages, setEditImages] = useState<ProductImage[]>([]);
+  const [editVideos, setEditVideos] = useState<ProductVideo[]>([]);
+  const [editVideoUrlInput, setEditVideoUrlInput] = useState('');
+  const [isProcessingEditMedia, setIsProcessingEditMedia] = useState(false);
+  const [mediaActionMsg, setMediaActionMsg] = useState('');
+
+  // Delete confirmation states (in-app, no window.confirm)
+  const [quoteToDeleteId, setQuoteToDeleteId] = useState<string | null>(null);
+  const [reviewToDeleteId, setReviewToDeleteId] = useState<string | null>(null);
+  const [productToDeleteId, setProductToDeleteId] = useState<string | null>(null);
+  const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState(false);
+
+  // Process batch of files (images and videos)
+  const processBatchFiles = async (
+    files: FileList | File[],
+    target: 'new' | 'edit'
+  ) => {
+    if (!files || files.length === 0) return;
+    if (target === 'new') setIsProcessingMedia(true);
+    else setIsProcessingEditMedia(true);
+
+    try {
+      const addedImgs: ProductImage[] = [];
+      const addedVids: ProductVideo[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const processed = await processImportedFile(file);
+        const cleanName = processed.name || file.name.replace(/\.[^/.]+$/, '');
+
+        if (processed.isVideo) {
+          addedVids.push({
+            id: `vid-${Date.now()}-${i}`,
+            url: processed.url,
+            title: cleanName,
+            order: Date.now() + i
+          });
+        } else {
+          const currentTotalImages = target === 'new' ? (newProdImages.length + addedImgs.length) : (editImages.length + addedImgs.length);
+          addedImgs.push({
+            id: `img-${Date.now()}-${i}`,
+            url: processed.url,
+            alt: cleanName,
+            isPrimary: currentTotalImages === 0,
+            order: Date.now() + i
+          });
+        }
+      }
+
+      if (target === 'new') {
+        setNewProdImages(prev => [...prev, ...addedImgs]);
+        setNewProdVideos(prev => [...prev, ...addedVids]);
+      } else {
+        setEditImages(prev => [...prev, ...addedImgs]);
+        setEditVideos(prev => [...prev, ...addedVids]);
+      }
+    } catch (err) {
+      console.error('Erreur importation médias:', err);
+      setMediaActionMsg('Une erreur est survenue lors de la lecture des fichiers.');
+      setTimeout(() => setMediaActionMsg(''), 4000);
+    } finally {
+      if (target === 'new') setIsProcessingMedia(false);
+      else setIsProcessingEditMedia(false);
+    }
+  };
+
+  const handleAddVideoUrl = (target: 'new' | 'edit') => {
+    const url = target === 'new' ? newVideoUrlInput.trim() : editVideoUrlInput.trim();
+    if (!url) return;
+
+    const newVid: ProductVideo = {
+      id: `vid-url-${Date.now()}`,
+      url: url,
+      title: url.includes('youtube') || url.includes('youtu.be') ? 'Vidéo YouTube' : 'Lien Vidéo',
+      order: Date.now()
+    };
+
+    if (target === 'new') {
+      setNewProdVideos(prev => [...prev, newVid]);
+      setNewVideoUrlInput('');
+    } else {
+      setEditVideos(prev => [...prev, newVid]);
+      setEditVideoUrlInput('');
+    }
+  };
+
+  const setPrimaryImage = (target: 'new' | 'edit', id: string) => {
+    if (target === 'new') {
+      setNewProdImages(prev => prev.map(img => ({ ...img, isPrimary: img.id === id })));
+    } else {
+      setEditImages(prev => prev.map(img => ({ ...img, isPrimary: img.id === id })));
+    }
+  };
+
+  const removeImage = (target: 'new' | 'edit', id: string) => {
+    if (target === 'new') {
+      setNewProdImages(prev => {
+        const remaining = prev.filter(img => img.id !== id);
+        if (remaining.length > 0 && !remaining.some(img => img.isPrimary)) {
+          remaining[0].isPrimary = true;
+        }
+        return remaining;
+      });
+    } else {
+      setEditImages(prev => {
+        const remaining = prev.filter(img => img.id !== id);
+        if (remaining.length > 0 && !remaining.some(img => img.isPrimary)) {
+          remaining[0].isPrimary = true;
+        }
+        // Auto-save immediately to database/storage so deletion is permanent
+        if (managingProduct) {
+          const updatedProduct: Product = {
+            ...managingProduct,
+            images: remaining,
+            videos: editVideos
+          };
+          StorageService.saveProduct(updatedProduct);
+          setManagingProduct(updatedProduct);
+        }
+        return remaining;
+      });
+      setMediaActionMsg('Photo supprimée avec succès');
+      setTimeout(() => setMediaActionMsg(''), 3000);
+    }
+  };
+
+  const removeVideo = (target: 'new' | 'edit', id: string) => {
+    if (target === 'new') {
+      setNewProdVideos(prev => prev.filter(v => v.id !== id));
+    } else {
+      setEditVideos(prev => {
+        const remaining = prev.filter(v => v.id !== id);
+        if (managingProduct) {
+          const updatedProduct: Product = {
+            ...managingProduct,
+            images: editImages,
+            videos: remaining
+          };
+          StorageService.saveProduct(updatedProduct);
+          setManagingProduct(updatedProduct);
+        }
+        return remaining;
+      });
+      setMediaActionMsg('Vidéo supprimée avec succès');
+      setTimeout(() => setMediaActionMsg(''), 3000);
+    }
+  };
+
+  const clearAllImages = (target: 'new' | 'edit') => {
+    if (target === 'new') {
+      setNewProdImages([]);
+    } else {
+      setEditImages([]);
+      if (managingProduct) {
+        const updatedProduct: Product = {
+          ...managingProduct,
+          images: [],
+          videos: editVideos
+        };
+        StorageService.saveProduct(updatedProduct);
+        setManagingProduct(updatedProduct);
+      }
+      setMediaActionMsg('Toutes les photos ont été supprimées');
+      setTimeout(() => setMediaActionMsg(''), 3000);
+    }
+  };
+
+  const clearAllVideos = (target: 'new' | 'edit') => {
+    if (target === 'new') {
+      setNewProdVideos([]);
+    } else {
+      setEditVideos([]);
+      if (managingProduct) {
+        const updatedProduct: Product = {
+          ...managingProduct,
+          images: editImages,
+          videos: []
+        };
+        StorageService.saveProduct(updatedProduct);
+        setManagingProduct(updatedProduct);
+      }
+      setMediaActionMsg('Toutes les vidéos ont été supprimées');
+      setTimeout(() => setMediaActionMsg(''), 3000);
+    }
+  };
+
+  const handleOpenMediaManager = (product: Product) => {
+    setManagingProduct(product);
+    setEditImages(product.images && product.images.length > 0 ? [...product.images] : []);
+    setEditVideos(product.videos && product.videos.length > 0 ? [...product.videos] : (product.videoUrl ? [{ id: 'vid-default', url: product.videoUrl, title: 'Vidéo' }] : []));
+    setEditVideoUrlInput('');
+    setMediaActionMsg('');
+  };
+
+  const handleSaveProductMedia = () => {
+    if (!managingProduct) return;
+    const updatedProduct: Product = {
+      ...managingProduct,
+      images: editImages,
+      videos: editVideos
+    };
+
+    StorageService.saveProduct(updatedProduct);
+    setManagingProduct(null);
+  };
 
   if (!isOpen) return null;
 
@@ -105,14 +329,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     e.preventDefault();
     if (!newProdName) return;
 
-    StorageService.saveProduct({
-      id: '',
-      name: newProdName,
-      slug: newProdName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      categoryId: newProdCat || categories[0]?.id,
-      shortDescription: newProdDesc,
-      fullDescription: newProdDesc,
-      images: [
+    let finalImages = [...newProdImages];
+    if (finalImages.length === 0) {
+      finalImages = [
         {
           id: `img-${Date.now()}`,
           url: newProdImg || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
@@ -120,7 +339,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           alt: newProdName,
           order: 0
         }
-      ],
+      ];
+    } else if (!finalImages.some(img => img.isPrimary)) {
+      finalImages[0].isPrimary = true;
+    }
+
+    StorageService.saveProduct({
+      id: '',
+      name: newProdName,
+      slug: newProdName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      categoryId: newProdCat || categories[0]?.id,
+      shortDescription: newProdDesc,
+      fullDescription: newProdDesc,
+      images: finalImages,
+      videos: newProdVideos,
       features: ['Fabrication sur mesure', 'Aluminium de première qualité', 'Finition soignée'],
       price: newProdPrice > 0 ? newProdPrice : undefined,
       priceUnit: 'pièce',
@@ -138,6 +370,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setNewProdDesc('');
     setNewProdPrice(0);
     setNewProdImg('');
+    setNewProdImages([]);
+    setNewProdVideos([]);
+    setNewVideoUrlInput('');
   };
 
   const unreadQuotesCount = quotes.filter(q => q.status === 'new').length;
@@ -334,18 +569,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               {/* Data Reset / Backup in sidebar */}
               <div className="pt-4 border-t border-slate-800 hidden md:block">
-                <button
-                  onClick={() => {
-                    if (confirm('Voulez-vous réinitialiser toutes les données par défaut de GLOBAL GLASS AND WINDOWS ?')) {
-                      StorageService.resetToDefaults();
-                      alert('Données réinitialisées avec succès.');
-                    }
-                  }}
-                  className="w-full text-left text-[11px] text-slate-500 hover:text-red-400 flex items-center gap-1.5 py-1"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Réinitialiser par défaut</span>
-                </button>
+                {showResetConfirm ? (
+                  <div className="p-2 bg-red-950/80 border border-red-800 rounded-xl space-y-1.5 text-center">
+                    <p className="text-[10px] text-red-200 font-bold">Réinitialiser toutes les données ?</p>
+                    <div className="flex justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          StorageService.resetToDefaults();
+                          setShowResetConfirm(false);
+                          setResetSuccessMsg(true);
+                          setTimeout(() => setResetSuccessMsg(false), 3000);
+                        }}
+                        className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black rounded"
+                      >
+                        Oui
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowResetConfirm(false)}
+                        className="px-2 py-0.5 bg-slate-700 text-slate-300 text-[10px] rounded"
+                      >
+                        Non
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowResetConfirm(true)}
+                    className="w-full text-left text-[11px] text-slate-500 hover:text-red-400 flex items-center gap-1.5 py-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Réinitialiser par défaut</span>
+                  </button>
+                )}
+                {resetSuccessMsg && (
+                  <p className="text-[10px] text-emerald-400 font-bold mt-1">Données réinitialisées !</p>
+                )}
               </div>
             </div>
 
@@ -618,18 +879,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               </select>
                             </div>
 
-                            <button
-                              onClick={() => {
-                                if (confirm('Supprimer ce devis ?')) {
-                                  StorageService.deleteQuote(selectedQuote.id);
-                                  setSelectedQuote(null);
-                                }
-                              }}
-                              className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Supprimer</span>
-                            </button>
+                            {quoteToDeleteId === selectedQuote.id ? (
+                              <div className="flex items-center gap-2 bg-red-950/80 border border-red-700 px-2.5 py-1 rounded-lg">
+                                <span className="text-[11px] text-red-200 font-bold">Confirmer ?</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    StorageService.deleteQuote(selectedQuote.id);
+                                    setSelectedQuote(null);
+                                    setQuoteToDeleteId(null);
+                                  }}
+                                  className="text-[11px] bg-red-600 hover:bg-red-700 text-white font-bold px-2 py-0.5 rounded cursor-pointer"
+                                >
+                                  Oui
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setQuoteToDeleteId(null)}
+                                  className="text-[11px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded cursor-pointer"
+                                >
+                                  Non
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setQuoteToDeleteId(selectedQuote.id)}
+                                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Supprimer</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       ) : (
@@ -716,17 +997,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             )}
                           </div>
 
-                          <button
-                            onClick={() => {
-                              if (confirm('Supprimer définitivement cet avis ?')) {
-                                StorageService.deleteReview(rev.id);
-                              }
-                            }}
-                            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Supprimer</span>
-                          </button>
+                          {reviewToDeleteId === rev.id ? (
+                            <div className="flex items-center gap-2 bg-red-950/80 border border-red-700 px-2.5 py-1 rounded-lg">
+                              <span className="text-[11px] text-red-200 font-bold">Supprimer ?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  StorageService.deleteReview(rev.id);
+                                  setReviewToDeleteId(null);
+                                }}
+                                className="text-[11px] bg-red-600 hover:bg-red-700 text-white font-bold px-2 py-0.5 rounded cursor-pointer"
+                              >
+                                Oui
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setReviewToDeleteId(null)}
+                                className="text-[11px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded cursor-pointer"
+                              >
+                                Non
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setReviewToDeleteId(rev.id)}
+                              className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Supprimer</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -795,9 +1096,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   {/* Add Product Modal */}
                   {isAddingProduct && (
-                    <form onSubmit={handleAddProductSubmit} className="bg-slate-800 p-6 rounded-2xl border-2 border-[#B6D232] space-y-4">
-                      <div className="flex items-center justify-between border-b border-slate-700 pb-2">
-                        <h4 className="font-black text-sm text-[#B6D232]">Nouveau Produit</h4>
+                    <form onSubmit={handleAddProductSubmit} className="bg-slate-800 p-6 rounded-2xl border-2 border-[#B6D232] space-y-5">
+                      <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                        <div className="flex items-center gap-2">
+                          <Plus className="w-5 h-5 text-[#B6D232]" />
+                          <h4 className="font-black text-base text-[#B6D232]">Ajouter un Nouveau Produit</h4>
+                        </div>
                         <button type="button" onClick={() => setIsAddingProduct(false)} className="text-slate-400 hover:text-white text-xs">Annuler</button>
                       </div>
 
@@ -829,41 +1133,210 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-slate-300 mb-1">Prix Estimatif ($ USD)</label>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Prix Estimatif ($ USD - optionnel)</label>
                           <input
                             type="number"
                             value={newProdPrice || ''}
                             onChange={(e) => setNewProdPrice(Number(e.target.value))}
-                            placeholder="Ex: 250"
+                            placeholder="Ex: 250 (laisser vide pour Sur Devis)"
                             className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-300 mb-1">URL Photo Principale</label>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Description succincte</label>
                           <input
-                            type="url"
-                            value={newProdImg}
-                            onChange={(e) => setNewProdImg(e.target.value)}
-                            placeholder="https://..."
+                            type="text"
+                            value={newProdDesc}
+                            onChange={(e) => setNewProdDesc(e.target.value)}
+                            placeholder="Description succincte du produit..."
                             className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
                           />
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-slate-300 mb-1">Description</label>
-                        <textarea
-                          rows={2}
-                          value={newProdDesc}
-                          onChange={(e) => setNewProdDesc(e.target.value)}
-                          placeholder="Description succincte du produit..."
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
-                        />
+                      {/* ZONE D'IMPORTATION MULTI-PHOTOS & VIDÉOS */}
+                      <div className="bg-slate-900/90 rounded-2xl p-4 border border-slate-700 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-black text-white flex items-center gap-1.5">
+                              <Upload className="w-4 h-4 text-[#B6D232]" />
+                              Importer plusieurs photos et vidéos en même temps
+                            </span>
+                            <p className="text-[11px] text-slate-400">
+                              Sélectionnez ou glissez-déposez plusieurs fichiers à la fois (JPG, PNG, WebP, MP4, WebM, MOV)
+                            </p>
+                          </div>
+                          {(newProdImages.length > 0 || newProdVideos.length > 0) && (
+                            <span className="text-xs font-bold text-[#B6D232] bg-[#B6D232]/10 px-2.5 py-1 rounded-full border border-[#B6D232]/30">
+                              {newProdImages.length} photo(s) • {newProdVideos.length} vidéo(s)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Drag & Drop Multi-file Dropzone */}
+                        <label
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (e.dataTransfer.files) {
+                              processBatchFiles(e.dataTransfer.files, 'new');
+                            }
+                          }}
+                          className="border-2 border-dashed border-slate-600 hover:border-[#B6D232] rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-800/50 hover:bg-slate-800"
+                        >
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*,video/*"
+                            onChange={(e) => processBatchFiles(e.target.files || [], 'new')}
+                            className="hidden"
+                          />
+                          <div className="p-3 bg-[#B6D232]/10 rounded-full text-[#B6D232] mb-2">
+                            <Upload className="w-6 h-6" />
+                          </div>
+                          <span className="text-xs font-black text-white text-center">
+                            Glissez-déposez plusieurs images et vidéos ici
+                          </span>
+                          <span className="text-[11px] text-[#B6D232] underline font-semibold mt-1">
+                            ou cliquez pour parcourir vos fichiers
+                          </span>
+                          {isProcessingMedia && (
+                            <span className="text-xs text-amber-300 font-bold mt-2 animate-pulse">
+                              Traitement des fichiers en cours...
+                            </span>
+                          )}
+                        </label>
+
+                        {/* Saisie d'un lien vidéo externe ou URL image optionnelle */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              value={newVideoUrlInput}
+                              onChange={(e) => setNewVideoUrlInput(e.target.value)}
+                              placeholder="Lien vidéo (YouTube, Vimeo, MP4 direct...)"
+                              className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddVideoUrl('new')}
+                              className="bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs px-3 py-2 rounded-lg whitespace-nowrap cursor-pointer flex items-center gap-1"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>+ Vidéo</span>
+                            </button>
+                          </div>
+
+                          <div>
+                            <input
+                              type="url"
+                              value={newProdImg}
+                              onChange={(e) => setNewProdImg(e.target.value)}
+                              placeholder="Ou URL directe d'image (ex: https://...)"
+                              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Visual Preview Strip of Uploaded Media */}
+                        {(newProdImages.length > 0 || newProdVideos.length > 0) && (
+                          <div className="pt-3 border-t border-slate-700 space-y-2">
+                            <span className="text-[11px] font-bold text-slate-300 block">
+                              Médias prêts pour ce produit ({newProdImages.length} images, {newProdVideos.length} vidéos) :
+                            </span>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                              {/* Images */}
+                              {newProdImages.map((img) => (
+                                <div key={img.id} className={`relative rounded-xl overflow-hidden border-2 bg-slate-800 group ${img.isPrimary ? 'border-[#B6D232] ring-2 ring-[#B6D232]/50' : 'border-slate-700'}`}>
+                                  <div className="aspect-square w-full">
+                                    <img
+                                      src={img.url}
+                                      alt=""
+                                      onError={(e) => {
+                                        const target = e.currentTarget;
+                                        if (!target.src.includes('unsplash')) {
+                                          target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80';
+                                        }
+                                      }}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="absolute top-1 left-1 z-10">
+                                    {img.isPrimary ? (
+                                      <span className="bg-[#B6D232] text-[#340648] text-[9px] font-black px-1.5 py-0.5 rounded shadow">
+                                        ★ Couv.
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => setPrimaryImage('new', img.id)}
+                                        className="bg-black/60 hover:bg-black text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow cursor-pointer"
+                                        title="Définir comme photo principale"
+                                      >
+                                        Couv.
+                                      </button>
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeImage('new', img.id)}
+                                    className="absolute top-1 right-1 z-10 p-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow cursor-pointer"
+                                    title="Supprimer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+
+                              {/* Videos */}
+                              {newProdVideos.map((vid) => (
+                                <div key={vid.id} className="relative rounded-xl overflow-hidden border-2 border-purple-500 bg-purple-950 p-2 flex flex-col justify-between aspect-square group">
+                                  {(vid.url?.startsWith('data:video') || vid.url?.startsWith('blob:') || /\.(mp4|webm|mov|m4v)/i.test(vid.url)) && (
+                                    <video src={vid.url} preload="metadata" muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none" />
+                                  )}
+                                  <div className="flex items-center justify-between relative z-10">
+                                    <span className="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1">
+                                      <Film className="w-2.5 h-2.5" />
+                                      VIDÉO
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeVideo('new', vid.id)}
+                                      className="p-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  <div className="flex flex-col items-center justify-center my-auto relative z-10">
+                                    <Play className="w-6 h-6 text-[#B6D232] fill-[#B6D232]" />
+                                    <span className="text-[10px] text-slate-200 font-bold truncate max-w-full mt-1">
+                                      {vid.title || 'Vidéo'}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      <button type="submit" className="bg-[#B6D232] text-[#340648] font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer">
-                        Enregistrer le Produit
-                      </button>
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingProduct(false)}
+                          className="text-slate-400 hover:text-white text-xs px-4 py-2"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isProcessingMedia}
+                          className="bg-[#B6D232] text-[#340648] font-black text-xs px-6 py-2.5 rounded-xl cursor-pointer hover:bg-[#a3be27] shadow flex items-center gap-1.5"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Enregistrer le Produit avec Médias</span>
+                        </button>
+                      </div>
                     </form>
                   )}
 
@@ -872,30 +1345,289 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     {products.map((p) => (
                       <div key={p.id} className="bg-slate-800 rounded-2xl p-4 border border-slate-700 flex flex-col justify-between">
                         <div>
-                          <div className="aspect-video w-full rounded-xl overflow-hidden mb-3 bg-slate-900">
+                          <div className="aspect-video w-full rounded-xl overflow-hidden mb-3 bg-slate-900 relative">
                             <img src={p.images[0]?.url} alt={p.name} className="w-full h-full object-cover" />
+                            {/* Media counter on card */}
+                            <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-2 border border-white/20">
+                              <span className="flex items-center gap-1 text-[#B6D232]">
+                                <ImageIcon className="w-3 h-3" />
+                                <span>{p.images?.length || 1}</span>
+                              </span>
+                              {(p.videos && p.videos.length > 0) && (
+                                <span className="flex items-center gap-1 text-red-400">
+                                  <Video className="w-3 h-3" />
+                                  <span>{p.videos.length}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <h4 className="font-extrabold text-sm text-white mb-1">{p.name}</h4>
                           <p className="text-xs text-slate-400 line-clamp-2 mb-3">{p.shortDescription}</p>
                         </div>
-                        <div className="pt-3 border-t border-slate-700 flex items-center justify-between text-xs">
-                          <span className="font-bold text-[#B6D232]">
-                            {p.price ? `$${p.price} USD` : 'Sur mesure'}
-                          </span>
+                        <div className="pt-3 border-t border-slate-700 flex items-center justify-between text-xs gap-2">
                           <button
-                            onClick={() => {
-                              if (confirm(`Supprimer le produit "${p.name}" ?`)) {
-                                StorageService.deleteProduct(p.id);
-                              }
-                            }}
-                            className="text-red-400 hover:text-red-300 text-xs"
+                            type="button"
+                            onClick={() => handleOpenMediaManager(p)}
+                            className="bg-purple-900/60 hover:bg-purple-800 text-[#B6D232] font-black text-[11px] px-2.5 py-1.5 rounded-lg border border-purple-600/40 flex items-center gap-1.5 cursor-pointer transition-colors"
+                            title="Importer plusieurs photos et vidéos pour ce produit"
                           >
-                            Supprimer
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Gérer Médias ({p.images?.length || 1}📷 / {p.videos?.length || 0}🎥)</span>
                           </button>
+
+                          {productToDeleteId === p.id ? (
+                            <div className="flex items-center gap-1.5 bg-red-950/80 border border-red-700 px-2 py-0.5 rounded-lg">
+                              <span className="text-[10px] text-red-200 font-bold">Supprimer ?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  StorageService.deleteProduct(p.id);
+                                  setProductToDeleteId(null);
+                                }}
+                                className="text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Oui
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setProductToDeleteId(null)}
+                                className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Non
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setProductToDeleteId(p.id)}
+                              className="text-red-400 hover:text-red-300 text-xs p-1 cursor-pointer"
+                              title="Supprimer le produit"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
+
+                  {/* DEDICATED MEDIA MANAGER MODAL FOR EXISTING PRODUCTS */}
+                  {managingProduct && (
+                    <div
+                      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto"
+                      onClick={() => setManagingProduct(null)}
+                    >
+                      <div
+                        className="bg-slate-900 border-4 border-[#B6D232] rounded-3xl p-6 max-w-3xl w-full text-white shadow-2xl space-y-5 my-8 relative"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-[#B6D232] tracking-wider block">Gestionnaire Médias</span>
+                            <h3 className="text-lg font-black text-white">{managingProduct.name}</h3>
+                          </div>
+                          <button
+                            onClick={() => setManagingProduct(null)}
+                            className="p-1.5 text-slate-400 hover:text-white rounded-lg"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Bulk file uploader */}
+                        <label
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (e.dataTransfer.files) {
+                              processBatchFiles(e.dataTransfer.files, 'edit');
+                            }
+                          }}
+                          className="border-2 border-dashed border-slate-600 hover:border-[#B6D232] rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-800/60 hover:bg-slate-800"
+                        >
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*,video/*"
+                            onChange={(e) => processBatchFiles(e.target.files || [], 'edit')}
+                            className="hidden"
+                          />
+                          <div className="p-3 bg-[#B6D232]/15 rounded-full text-[#B6D232] mb-2">
+                            <Upload className="w-6 h-6" />
+                          </div>
+                          <span className="text-sm font-black text-white text-center">
+                            Glissez-déposez de nouvelles photos et vidéos à ajouter
+                          </span>
+                          <span className="text-xs text-[#B6D232] underline font-bold mt-1">
+                            ou cliquez pour sélectionner plusieurs fichiers
+                          </span>
+                          {isProcessingEditMedia && (
+                            <span className="text-xs text-amber-300 font-bold mt-2 animate-pulse">
+                              Importation des médias en cours...
+                            </span>
+                          )}
+                        </label>
+
+                        {/* Add Video URL field */}
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            value={editVideoUrlInput}
+                            onChange={(e) => setEditVideoUrlInput(e.target.value)}
+                            placeholder="Coller un lien vidéo (YouTube, Vimeo, MP4)..."
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddVideoUrl('edit')}
+                            className="bg-purple-700 hover:bg-purple-600 text-white font-bold text-xs px-4 py-2 rounded-lg whitespace-nowrap cursor-pointer flex items-center gap-1"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>+ Ajouter Vidéo</span>
+                          </button>
+                        </div>
+
+                        {/* Feedback message */}
+                        {mediaActionMsg && (
+                          <div className="bg-emerald-900/80 border border-emerald-500 text-emerald-200 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-2 animate-fade-in">
+                            <Check className="w-4 h-4 text-emerald-400" />
+                            <span>{mediaActionMsg}</span>
+                          </div>
+                        )}
+
+                        {/* Existing Images & Videos List */}
+                        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-slate-300">
+                              Médias actuels ({editImages.length} photos, {editVideos.length} vidéos) :
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {editImages.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => clearAllImages('edit')}
+                                  className="text-[11px] font-bold text-red-400 hover:text-red-300 px-2 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800/80 cursor-pointer flex items-center gap-1 transition-colors"
+                                  title="Supprimer toutes les photos de ce produit"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Supprimer toutes les photos</span>
+                                </button>
+                              )}
+                              {editVideos.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => clearAllVideos('edit')}
+                                  className="text-[11px] font-bold text-red-400 hover:text-red-300 px-2 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800/80 cursor-pointer flex items-center gap-1 transition-colors"
+                                  title="Supprimer toutes les vidéos de ce produit"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>Supprimer toutes les vidéos</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                            {/* Images */}
+                            {editImages.map((img) => (
+                              <div
+                                key={img.id}
+                                className={`relative rounded-xl overflow-hidden border-2 bg-slate-800 group ${
+                                  img.isPrimary ? 'border-[#B6D232] ring-2 ring-[#B6D232]/50' : 'border-slate-700'
+                                }`}
+                              >
+                                <div className="aspect-square w-full">
+                                  <img
+                                    src={img.url}
+                                    alt=""
+                                    onError={(e) => {
+                                      const target = e.currentTarget;
+                                      if (!target.src.includes('unsplash')) {
+                                        target.src = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80';
+                                      }
+                                    }}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div className="absolute top-1 left-1 z-10">
+                                  {img.isPrimary ? (
+                                    <span className="bg-[#B6D232] text-[#340648] text-[9px] font-black px-1.5 py-0.5 rounded shadow">
+                                      ★ Couv.
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setPrimaryImage('edit', img.id)}
+                                      className="bg-black/70 hover:bg-black text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow cursor-pointer"
+                                      title="Définir comme photo principale"
+                                    >
+                                      Couv.
+                                    </button>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeImage('edit', img.id)}
+                                  className="absolute top-1 right-1 z-10 p-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow cursor-pointer"
+                                  title="Supprimer cette image"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+
+                            {/* Videos */}
+                            {editVideos.map((vid) => (
+                              <div key={vid.id} className="relative rounded-xl overflow-hidden border-2 border-purple-500 bg-purple-950 p-2 flex flex-col justify-between aspect-square group">
+                                {(vid.url?.startsWith('data:video') || vid.url?.startsWith('blob:') || /\.(mp4|webm|mov|m4v)/i.test(vid.url)) && (
+                                  <video src={vid.url} preload="metadata" muted playsInline className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none" />
+                                )}
+                                <div className="flex items-center justify-between relative z-10">
+                                  <span className="bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded flex items-center gap-1">
+                                    <Film className="w-2.5 h-2.5" />
+                                    VIDÉO
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeVideo('edit', vid.id)}
+                                    className="p-1 bg-red-600 hover:bg-red-700 text-white rounded-md shadow cursor-pointer"
+                                    title="Supprimer cette vidéo"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                <div className="flex flex-col items-center justify-center my-auto relative z-10">
+                                  <Play className="w-6 h-6 text-[#B6D232] fill-[#B6D232]" />
+                                  <span className="text-[10px] text-slate-200 font-bold truncate max-w-full mt-1">
+                                    {vid.title || 'Vidéo'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-700">
+                          <button
+                            type="button"
+                            onClick={() => setManagingProduct(null)}
+                            className="px-4 py-2 text-xs text-slate-400 hover:text-white"
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveProductMedia}
+                            className="bg-[#B6D232] text-[#340648] font-black text-xs px-6 py-2.5 rounded-xl cursor-pointer hover:bg-[#a3be27] shadow flex items-center gap-2"
+                          >
+                            <Save className="w-4 h-4" />
+                            <span>Enregistrer les Médias du Produit</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -917,16 +1649,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                         <div className="pt-3 mt-3 border-t border-slate-700 flex items-center justify-between text-xs">
                           <span className="text-slate-400">{proj.hasBeforeAfter ? 'Avec Avant/Après' : 'Photo standard'}</span>
-                          <button
-                            onClick={() => {
-                              if (confirm(`Supprimer le projet "${proj.title}" ?`)) {
-                                StorageService.deleteProject(proj.id);
-                              }
-                            }}
-                            className="text-red-400 hover:text-red-300 text-xs"
-                          >
-                            Supprimer
-                          </button>
+                          {projectToDeleteId === proj.id ? (
+                            <div className="flex items-center gap-1.5 bg-red-950/80 border border-red-700 px-2 py-0.5 rounded-lg">
+                              <span className="text-[10px] text-red-200 font-bold">Supprimer ?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  StorageService.deleteProject(proj.id);
+                                  setProjectToDeleteId(null);
+                                }}
+                                className="text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Oui
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setProjectToDeleteId(null)}
+                                className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Non
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setProjectToDeleteId(proj.id)}
+                              className="text-red-400 hover:text-red-300 text-xs cursor-pointer"
+                            >
+                              Supprimer
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

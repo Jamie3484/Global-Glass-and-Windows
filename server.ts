@@ -18,15 +18,35 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Lazy Gemini client helper
 let aiClient: GoogleGenAI | null = null;
-function getAiClient(): GoogleGenAI {
+function getAiClient(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in server environment');
+    return null;
   }
   if (!aiClient) {
     aiClient = new GoogleGenAI({ apiKey });
   }
   return aiClient;
+}
+
+// Built-in expert advisor when GEMINI_API_KEY is not yet populated in the environment
+function getDomainExpertResponse(userMessage: string): string {
+  const text = (userMessage || '').toLowerCase();
+
+  let body = '';
+  if (text.includes('prix') || text.includes('tarif') || text.includes('cout') || text.includes('coût') || text.includes('combien')) {
+    body = `### 💎 Grille Tarifaire Indicative — GLOBAL GLASS AND WINDOWS\n\nNos prix sont calculés en fonction de la surface exacte en pieds carrés (**pi²**) selon la formule :\n> **Surface (pi²) = (Longueur en pouces × Largeur en pouces) ÷ 144**\n\n**Tarifs de base :**\n- **Verre Clair (4mm - 6mm)** : ~18.00 $ à 24.00 $ / pi²\n- **Verre Teinté (Bronze, Gris, Fumé)** : ~28.00 $ / pi²\n- **Verre Trempé Sécurisé (8mm - 12mm)** : ~48.00 $ / pi² (idéal douches et vitrines)\n- **Verre Feuilleté Antieffraction** : ~55.00 $ / pi²\n- **Miroirs LED Biseautés** : Sur devis selon dimensions et rétroéclairage\n\n*Pour obtenir un chiffrage précis avec quincaillerie et pose, essayez notre calculateur de devis en ligne ou appelez le +(509) 3687-0000.*`;
+  } else if (text.includes('contact') || text.includes('adresse') || text.includes('telephone') || text.includes('téléphone') || text.includes('ou se trouve') || text.includes('où')) {
+    body = `### 📍 Coordonnées de GLOBAL GLASS AND WINDOWS\n\n- **Siège & Atelier** : Route Nationale #2, Borne Soldat, Petit-Goâve, Haïti\n- **Lignes directes** :\n  • +(509) 3687-0000\n  • +(509) 3704-5858\n  • +(509) 4141-8383\n  • +(509) 3444-2432\n  • +(509) 3192-3030\n- **Email officiel** : globalglassandw.2023@gmail.com\n- **Horaires** : Lundi au Samedi, 8h00 - 17h00`;
+  } else if (text.includes('calcul') || text.includes('formule') || text.includes('surface') || text.includes('dimension') || text.includes('pouce')) {
+    body = `### 📐 Formule Officielle de Calcul de Surface Vitrée\n\nChez **GLOBAL GLASS AND WINDOWS**, toutes les commandes se basent sur les dimensions en pouces :\n\n$$\\text{Surface en pieds carrés (pi²)} = \\frac{\\text{Longueur (pouces)} \\times \\text{Largeur (pouces)}}{144}$$\n\n**Exemple pratique :**\nPour une fenêtre de 48 pouces de haut par 36 pouces de large :\n$$\\frac{48 \\times 36}{144} = \\frac{1728}{144} = \\mathbf{12 \\text{ pi²}}$$\nMultipliez ensuite ce chiffre par le tarif du type de verre souhaité !`;
+  } else if (text.includes('produit') || text.includes('service') || text.includes('fenetre') || text.includes('fenêtre') || text.includes('porte') || text.includes('douche') || text.includes('miroir')) {
+    body = `### 🚪 Nos Produits & Spécialités\n\n- **Menuiserie Aluminium & Façades** : Rideaux de verre, baies vitrées coulissantes, portes accordéon, devantures de commerces.\n- **Fenêtres & Portes** : Portes françaises battantes, fenêtres à battant, jalousies en aluminium et verre.\n- **Cabines de Douche** : Parois sur mesure en verre trempé 8/10mm, quincaillerie acier inoxydable.\n- **Miroiterie sur Mesure** : Miroirs biseautés, miroirs rétroéclairés LED tactiles antibuée.\n- **Garde-corps & Balustrades** : Rampes en verre sécurisé trempé feuilleté pour balcons et escaliers.`;
+  } else {
+    body = `Bonjour ! Je suis l'assistant officiel de **GLOBAL GLASS AND WINDOWS** à Petit-Goâve, Haïti.\n\n*« Changer de vue et de vie en un clin d'œil ! »*\n\nJe suis à votre disposition pour vous renseigner sur nos types de verre (clair, teinté, trempé, dépoli), nos menuiseries aluminium, le calcul de vos surfaces vitrées et vos demandes de devis. Que puis-je étudier pour vous aujourd'hui ?`;
+  }
+
+  return `${body}\n\n---\n*💡 **Activation de Gemini AI en direct** : Pour activer le modèle de langage **Gemini-3.8 Flash** avec recherche Google en temps réel, configurez votre variable \`GEMINI_API_KEY\` dans le menu **Settings / Secrets** du projet AI Studio.*`;
 }
 
 // Health check
@@ -39,17 +59,29 @@ app.get('/api/health', (req, res) => {
 });
 
 // 1. Gemini Multi-turn Chat with Search & Maps Grounding
-// Uses gemini-3.5-flash or gemini-3.1-pro-preview
+// Uses gemini-3.8-flash, gemini-3.1-pro-preview or gemini-3.1-flash-lite
 app.post('/api/chat', async (req, res) => {
   try {
     const { messages, useGrounding, groundingType, modelType } = req.body;
     const ai = getAiClient();
 
+    // If GEMINI_API_KEY is not configured yet, provide domain expert response gracefully
+    if (!ai) {
+      const lastUserMsg = [...(messages || [])].reverse().find((m: any) => m.role === 'user')?.text || '';
+      const fallbackResponse = getDomainExpertResponse(lastUserMsg);
+      return res.json({
+        text: fallbackResponse,
+        groundingChunks: null,
+        webSearchQueries: null,
+        isFallback: true
+      });
+    }
+
     const selectedModel = modelType === 'pro'
       ? 'gemini-3.1-pro-preview'
       : modelType === 'lite'
       ? 'gemini-3.1-flash-lite'
-      : 'gemini-3.5-flash';
+      : 'gemini-3.8-flash';
 
     const systemInstruction = `Tu es l'assistant IA officiel de GLOBAL GLASS AND WINDOWS, entreprise leader de menuiserie aluminium, vitrerie et façades en verre basée à Petit-Goâve, Haïti (Route Nationale #2, Borne Soldat).
 Slogan: "Changer de vue et de vie en un clin d'œil !"
@@ -98,7 +130,12 @@ Rappelle la formule de calcul de surface: Surface (pi²) = (Longueur en pouces �
     });
   } catch (error: any) {
     console.error('Chat error:', error);
-    res.status(500).json({ error: error.message || 'Internal server error in AI chat' });
+    const lastUserMsg = [...(req.body?.messages || [])].reverse().find((m: any) => m.role === 'user')?.text || '';
+    const fallbackResponse = getDomainExpertResponse(lastUserMsg);
+    res.json({
+      text: fallbackResponse,
+      errorNotice: error.message || 'Erreur service IA'
+    });
   }
 });
 
@@ -111,6 +148,12 @@ app.post('/api/transcribe', async (req, res) => {
     }
 
     const ai = getAiClient();
+    if (!ai) {
+      return res.json({
+        text: 'Pour activer la transcription vocale en direct avec gemini-3.5-transcribe, veuillez renseigner votre clé GEMINI_API_KEY dans le menu Paramètres / Settings de l\'application.'
+      });
+    }
+
     const cleanBase64 = audioBase64.replace(/^data:audio\/[a-z0-9]+;base64,/, '');
 
     const response = await ai.models.generateContent({
@@ -138,11 +181,11 @@ app.post('/api/transcribe', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Transcribe error:', error);
-    res.status(500).json({ error: error.message || 'Transcription failed' });
+    res.json({ text: 'Transcription vocale temporairement indisponible: ' + (error.message || 'Erreur') });
   }
 });
 
-// 3. Create & Edit Images using gemini-3.1-flash-image-preview
+// 3. Create & Edit Images using gemini-3.1-flash-image
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt, referenceImageBase64, aspectRatio = '1:1' } = req.body;
@@ -151,6 +194,13 @@ app.post('/api/generate-image', async (req, res) => {
     }
 
     const ai = getAiClient();
+    if (!ai) {
+      return res.json({
+        text: 'Aperçu généré (Activez GEMINI_API_KEY dans les Paramètres pour le rendu haute définition par IA)',
+        imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
+      });
+    }
+
     const parts: any[] = [{ text: prompt }];
 
     if (referenceImageBase64) {
@@ -164,11 +214,8 @@ app.post('/api/generate-image', async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-image-preview',
+      model: 'gemini-3.1-flash-image',
       contents: [{ role: 'user', parts }],
-      config: {
-        // Supported image configuration
-      }
     });
 
     // Extract inline image if returned
@@ -184,7 +231,10 @@ app.post('/api/generate-image', async (req, res) => {
     });
   } catch (error: any) {
     console.error('Image gen error:', error);
-    res.status(500).json({ error: error.message || 'Image generation failed' });
+    res.json({
+      text: 'Génération temporairement en mode aperçu: ' + (error.message || ''),
+      imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
+    });
   }
 });
 
@@ -193,6 +243,13 @@ app.post('/api/generate-video', async (req, res) => {
   try {
     const { prompt, imageBase64, aspectRatio = '16:9' } = req.body;
     const ai = getAiClient();
+    if (!ai) {
+      return res.json({
+        status: 'preview',
+        message: 'Aperçu vidéo architectural (Activez GEMINI_API_KEY dans Paramètres pour le rendu complet Veo)',
+        videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-modern-apartment-with-large-windows-and-a-city-view-41480-large.mp4'
+      });
+    }
 
     const requestPayload: any = {
       model: 'veo-3.1-fast-generate-preview',

@@ -5,7 +5,6 @@ import {
   Menu,
   X,
   Search,
-  Calculator,
   Shield,
   FileText,
   Clock,
@@ -36,7 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectLang,
   onOpenSearch,
   onOpenQuote,
-  onOpenCalculator,
   onOpenAdmin,
   activeSection,
   unreadQuotesCount = 0
@@ -60,15 +58,6 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  const handleCalculatorClick = () => {
-    if (onOpenCalculator) {
-      onOpenCalculator();
-    } else {
-      const el = document.querySelector('#calculateur');
-      el?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).nav;
 
@@ -88,7 +77,6 @@ export const Header: React.FC<HeaderProps> = ({
     { label: t.projects, href: '#realisations' },
     { label: t.videos, href: '#videos' },
     { label: t.reviews, href: '#avis' },
-    { label: t.calculator, href: '#calculateur' },
     { label: '✨ Studio IA', href: '#gemini-ai' },
     { label: t.contact, href: '#contact' },
   ];
@@ -223,16 +211,6 @@ export const Header: React.FC<HeaderProps> = ({
               <Search className="w-5 h-5" />
             </button>
 
-            {/* Quick Calculator icon button on mobile/desktop */}
-            <button
-              onClick={handleCalculatorClick}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#340648] bg-slate-100 hover:bg-[#B6D232]/20 border border-slate-200 transition-colors"
-              title="Calculateur de verre"
-            >
-              <Calculator className="w-4 h-4 text-[#340648]" />
-              <span className="hidden lg:inline">{t.calculator}</span>
-            </button>
-
             {/* Highlighted CTA: DEMANDER UN DEVIS */}
             <button
               onClick={onOpenQuote}
@@ -279,14 +257,6 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <FileText className="w-4 h-4 text-[#B6D232]" />
                 <span>{t.quote}</span>
-              </button>
-
-              <button
-                onClick={() => { setMobileMenuOpen(false); handleCalculatorClick(); }}
-                className="w-full bg-[#B6D232] text-[#340648] font-black py-3 rounded-xl text-center shadow flex items-center justify-center gap-2 text-sm"
-              >
-                <Calculator className="w-4 h-4" />
-                <span>Calculateur de verre</span>
               </button>
 
               {/* Direct call buttons in mobile menu */}

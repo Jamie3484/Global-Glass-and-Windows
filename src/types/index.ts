@@ -32,6 +32,15 @@ export interface ProductImage {
   order: number;
 }
 
+export interface ProductVideo {
+  id: string;
+  url: string;
+  title?: string;
+  thumbnailUrl?: string;
+  isPrimary?: boolean;
+  order?: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -50,6 +59,7 @@ export interface Product {
   order: number;
   status: 'published' | 'draft';
   images: ProductImage[];
+  videos?: ProductVideo[];
   specifications?: Record<string, string>;
   videoUrl?: string;
   createdAt: string;

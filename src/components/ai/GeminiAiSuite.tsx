@@ -97,11 +97,15 @@ export const GeminiAiSuite: React.FC = () => {
         throw new Error(data.error || 'Pas de réponse');
       }
     } catch (err: any) {
+      const msg = err.message || '';
+      const displayMsg = msg.includes('GEMINI_API_KEY')
+        ? "La clé d'API Gemini (GEMINI_API_KEY) n'est pas encore configurée dans les paramètres de votre projet AI Studio. Pour activer l'IA en temps réel avec Gemini-3.8 Flash, ajoutez votre clé dans le menu Paramètres / Settings > Secrets."
+        : `Désolé, une erreur est survenue: ${msg || 'Impossible de joindre le service AI'}`;
       setChatMessages(prev => [
         ...prev,
         {
           role: 'model',
-          text: `Désolé, une erreur est survenue: ${err.message || 'Impossible de joindre le service AI'}`
+          text: displayMsg
         }
       ]);
     } finally {
@@ -415,7 +419,7 @@ export const GeminiAiSuite: React.FC = () => {
                   onChange={(e: any) => setModelType(e.target.value)}
                   className="bg-slate-800 text-white rounded-lg px-2.5 py-1 border border-white/10 focus:outline-none focus:border-[#B6D232]"
                 >
-                  <option value="flash">gemini-3.5-flash (Recommandé)</option>
+                  <option value="flash">gemini-3.8-flash (Recommandé)</option>
                   <option value="pro">gemini-3.1-pro-preview (Raisonnement Complexe)</option>
                   <option value="lite">gemini-3.1-flash-lite (Ultra Rapide)</option>
                 </select>

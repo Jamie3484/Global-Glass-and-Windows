@@ -145,7 +145,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <a href="#avis" className="hover:text-[#B6D232] transition-colors">Avis Clients</a>
               </li>
               <li>
-                <a href="#calculateur" className="hover:text-[#B6D232] transition-colors">Calculateur de Verre</a>
+                <a href="#contact" className="hover:text-[#B6D232] transition-colors">Contact & Devis</a>
               </li>
             </ul>
           </div>
@@ -238,7 +238,7 @@ export const Footer: React.FC<FooterProps> = ({
           <div>
             <p>© {new Date().getFullYear()} {settings.companyName} — Tous droits réservés.</p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Petit-Goâve, Haïti • Spécialiste Verre, Miroirs, Portes, Fenêtres & Aluminium
+              Borne Soldat, Petit-Goâve, Haïti • Spécialiste Verre, Miroirs, Portes, Fenêtres & Aluminium
             </p>
           </div>
 

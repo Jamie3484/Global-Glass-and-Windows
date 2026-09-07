@@ -38,9 +38,10 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
               {/* Photo representation of the physical shop and service truck in Petit-Goâve */}
               <div className="relative aspect-[4/3] w-full overflow-hidden">
                 <img
-                  src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80"
+                  src="/assets/ggw_storefront_truck.jpg"
                   alt="Local physique et camion de service GLOBAL GLASS AND WINDOWS"
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#340648]/90 via-[#340648]/30 to-transparent" />
               </div>

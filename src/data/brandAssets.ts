@@ -14,8 +14,19 @@ export const BRAND_COLORS = {
   metallic: '#94a3b8',
 };
 
-// High-fidelity SVG components and assets
+// Official Assets from company submissions
 export const OFFICIAL_ASSETS = {
+  // Official Logo & Background
+  logoUrl: "/assets/logo_global_glass.jpg",
+  heroBackground: "/assets/ggw_storefront_truck.jpg",
+  storeTruckPhoto: "/assets/ggw_storefront_truck.jpg",
+  
+  // Official Uniform Employee Photos (Haitian staff in purple embroidered polo)
+  uniformDoorCloser: "/assets/haitian_technician_door_closer.jpg",
+  uniformWorkshopArtisan: "/assets/haitian_artisan_glass_cutting.jpg",
+  uniformInstallationTeam: "/assets/haitian_installation_team.jpg",
+  uniformDeliveryTeam: "/assets/haitian_delivery_team_truck.jpg",
+
   // Official Slogan
   slogan: "Changer de vue et de vie en un clin d'œil !",
   sloganHt: "Chanje fason w wè ak fason w viv nan yon bat je !",
@@ -30,8 +41,9 @@ export const OFFICIAL_ASSETS = {
   ],
 
   // Real store images & visual representations
-  storePhoto: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1400&q=80",
-  workshopPhoto: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1200&q=80",
-  truckDeliveryPhoto: "https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=1200&q=80",
-  architecturalGlass: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80",
+  storePhoto: "/assets/ggw_storefront_truck.jpg",
+  workshopPhoto: "/assets/haitian_artisan_glass_cutting.jpg",
+  truckDeliveryPhoto: "/assets/haitian_delivery_team_truck.jpg",
+  architecticianGlazing: "/assets/haitian_installation_team.jpg",
 };
+
