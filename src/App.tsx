@@ -176,6 +176,7 @@ export default function App() {
             const el = document.querySelector('#contact');
             el?.scrollIntoView({ behavior: 'smooth' });
           }}
+          onOpenLightbox={handleOpenLightbox}
         />
 
         {/* 3. Automatic Dynamic Product Carousel */}

@@ -111,6 +111,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetSuccessMsg, setResetSuccessMsg] = useState(false);
+  const [adminStorePhoto, setAdminStorePhoto] = useState<string>(() => {
+    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+  });
+  const [storePhotoMsg, setStorePhotoMsg] = useState('');
 
   // Process batch of files (images and videos)
   const processBatchFiles = async (
@@ -1780,6 +1784,96 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Official Storefront & Truck Photo (Zero Modification) */}
+                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-black text-sm text-[#B6D232] flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4" />
+                          <span>Photo Officielle du Local & Camion GGW</span>
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Affichée sur la page d’accueil et dans la présentation de l'entreprise sans modification ni compression.
+                        </p>
+                      </div>
+                    </div>
+
+                    {storePhotoMsg && (
+                      <div className="bg-emerald-900/50 border border-emerald-500 text-emerald-300 p-2.5 rounded-xl text-xs font-bold flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span>{storePhotoMsg}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                      <div className="w-full sm:w-64 aspect-[16/9] rounded-xl overflow-hidden border-2 border-slate-600 bg-slate-950 flex-shrink-0">
+                        <img
+                          src={adminStorePhoto}
+                          alt="Local & Camion"
+                          className="w-full h-full object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+
+                      <div className="space-y-3 w-full">
+                        <div className="flex flex-wrap gap-2">
+                          <label className="inline-flex items-center gap-2 bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-bold text-xs px-4 py-2 rounded-xl shadow cursor-pointer">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Charger une photo (ex: Local et Camion de GGW.png)</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = async (evt) => {
+                                  const base64 = evt.target?.result as string;
+                                  if (base64) {
+                                    setAdminStorePhoto(base64);
+                                    localStorage.setItem('ggw_official_store_photo', base64);
+                                    window.dispatchEvent(new Event('ggw_storage_updated'));
+                                    try {
+                                      await fetch('/api/upload-storefront-photo', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ imageBase64: base64, filename: file.name })
+                                      });
+                                    } catch (err) {
+                                      console.error('Error saving store photo:', err);
+                                    }
+                                    setStorePhotoMsg('Photo officielle mise à jour sans aucune retouche !');
+                                    setTimeout(() => setStorePhotoMsg(''), 4000);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }}
+                            />
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              localStorage.removeItem('ggw_official_store_photo');
+                              setAdminStorePhoto('/assets/ggw_storefront_truck.jpg?t=' + Date.now());
+                              window.dispatchEvent(new Event('ggw_storage_updated'));
+                              setStorePhotoMsg('Image restaurée à la version par défaut.');
+                              setTimeout(() => setStorePhotoMsg(''), 3000);
+                            }}
+                            className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl transition"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Réinitialiser</span>
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          Format recommandé : Ratio panoramique 16:9 pour capturer à la fois la façade complète et le camion de service.
+                        </p>
+                      </div>
                     </div>
                   </div>
 

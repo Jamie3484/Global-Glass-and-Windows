@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   Eye,
   Phone,
   ArrowRight,
   MapPin,
-  Maximize2
+  Maximize2,
+  Upload,
+  Check
 } from 'lucide-react';
 import { LogoBadge } from '../brand/LogoBadge';
 import { CompanySettings, Language } from '../../types';
@@ -25,15 +27,71 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   lang,
   onOpenQuote,
   onNavigateToProjects,
+  onNavigateToCalculator,
   onOpenLightbox
 }) => {
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).hero;
 
+  const [heroPhotoUrl, setHeroPhotoUrl] = useState<string>(() => {
+    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+  });
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      const saved = localStorage.getItem('ggw_official_store_photo');
+      if (saved) setHeroPhotoUrl(saved);
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('ggw_storage_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('ggw_storage_updated', handleUpdate);
+    };
+  }, []);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Data = event.target?.result as string;
+      if (base64Data) {
+        setHeroPhotoUrl(base64Data);
+        localStorage.setItem('ggw_official_store_photo', base64Data);
+        window.dispatchEvent(new Event('ggw_storage_updated'));
+
+        try {
+          await fetch('/api/upload-storefront-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              imageBase64: base64Data,
+              filename: file.name
+            })
+          });
+          setUploadSuccess(true);
+          setTimeout(() => setUploadSuccess(false), 4000);
+        } catch (err) {
+          console.error('Error saving image to server:', err);
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleOpenPhotoFullscreen = () => {
     if (onOpenLightbox) {
       onOpenLightbox(
-        '/assets/ggw_storefront_truck.jpg',
+        heroPhotoUrl,
         'Local Officiel et Camion de Service — GLOBAL GLASS AND WINDOWS',
         'Rte Nle #2, Borne Soldat, Petit-Goâve, Haïti • Tél: (509) 4467-5506 / 3599-8564 / 2910-1818'
       );
@@ -48,7 +106,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       */}
       <div className="absolute inset-0 z-0">
         <img
-          src="/assets/ggw_storefront_truck.jpg"
+          src={heroPhotoUrl}
           alt="Local et Camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
           className="w-full h-full object-cover object-center"
           referrerPolicy="no-referrer"
@@ -57,16 +115,48 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <div className="absolute inset-0 bg-slate-950/25 pointer-events-none" />
       </div>
 
-      {/* Bouton d'accès rapide plein écran pour admirer la photo originale soumise */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-8 z-20">
+      {/* Boutons d'accès rapide pour la photo réelle de l'établissement et remplacement direct */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-8 z-20 flex flex-wrap items-center justify-end gap-2 max-w-[90vw]">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="hidden"
+          id="hero-cover-image-input"
+        />
+
+        {uploadSuccess && (
+          <span className="inline-flex items-center gap-1.5 bg-emerald-600/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-emerald-400 backdrop-blur-sm">
+            <Check className="w-3.5 h-3.5 text-white" />
+            <span>Image mise à jour !</span>
+          </span>
+        )}
+
+        {/* Bouton Remplacer l'image */}
         <button
+          id="hero-replace-cover-btn"
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="inline-flex items-center gap-2 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] text-xs font-black px-3.5 py-2 rounded-full shadow-lg border border-white/60 backdrop-blur-md transition-all cursor-pointer disabled:opacity-50 hover:scale-105 active:scale-95"
+          title="Sélectionner une nouvelle photo pour la couverture du site (photo réelle de l'établissement)"
+        >
+          <Upload className="w-3.5 h-3.5 text-[#340648]" />
+          <span>{isUploading ? 'Chargement...' : "Remplacer l'image"}</span>
+        </button>
+
+        {/* Bouton Agrandir / Photo réelle de l'établissement */}
+        <button
+          id="hero-view-cover-btn"
+          type="button"
           onClick={handleOpenPhotoFullscreen}
-          className="inline-flex items-center gap-2 bg-[#230331]/80 hover:bg-[#230331] text-white text-xs font-bold px-3.5 py-2 rounded-full backdrop-blur-md border border-white/30 shadow-lg hover:shadow-xl transition-all cursor-pointer"
-          title="Agrandir la photo de l'établissement"
+          className="inline-flex items-center gap-2 bg-[#230331]/85 hover:bg-[#230331] text-white text-xs font-bold px-3.5 py-2 rounded-full backdrop-blur-md border border-white/30 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105 active:scale-95"
+          title="Agrandir la photo de l'établissement en plein écran"
         >
           <Maximize2 className="w-3.5 h-3.5 text-[#B6D232]" />
           <span className="hidden sm:inline">Photo réelle de l'établissement</span>
-          <span className="sm:hidden">Photo réelle</span>
+          <span className="sm:hidden">Agrandir</span>
         </button>
       </div>
 

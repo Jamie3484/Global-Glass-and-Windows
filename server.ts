@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
@@ -56,6 +57,92 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString(),
     geminiConfigured: !!process.env.GEMINI_API_KEY
   });
+});
+
+// Official store image synchronization & direct zero-modification upload
+function checkAndSyncStoreImage(): string | null {
+  const possibleSourcePaths = [
+    path.join(__dirname, 'Local et Camion de GGW.png'),
+    path.join(__dirname, 'public', 'Local et Camion de GGW.png'),
+    path.join(__dirname, 'public', 'assets', 'Local et Camion de GGW.png'),
+    path.join(__dirname, 'local_et_camion_de_ggw.png'),
+    path.join(__dirname, 'public', 'assets', 'local_et_camion_de_ggw.png'),
+  ];
+
+  for (const src of possibleSourcePaths) {
+    if (fs.existsSync(src)) {
+      const destJpg = path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg');
+      const destSrcJpg = path.join(__dirname, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
+      try {
+        fs.copyFileSync(src, destJpg);
+        if (fs.existsSync(path.dirname(destSrcJpg))) {
+          fs.copyFileSync(src, destSrcJpg);
+        }
+        return src;
+      } catch (err) {
+        console.error('[StoreImage] Error copying store image:', err);
+      }
+    }
+  }
+  return null;
+}
+checkAndSyncStoreImage();
+
+app.get('/api/official-store-image', (req, res) => {
+  const syncedFrom = checkAndSyncStoreImage();
+  const destJpg = path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg');
+  let exists = false;
+  let size = 0;
+  let mtime = null;
+
+  if (fs.existsSync(destJpg)) {
+    exists = true;
+    const stat = fs.statSync(destJpg);
+    size = stat.size;
+    mtime = stat.mtime;
+  }
+
+  res.json({
+    url: '/assets/ggw_storefront_truck.jpg',
+    exists,
+    size,
+    mtime,
+    syncedFrom
+  });
+});
+
+// Upload endpoint for the exact official store & truck photo without any compression or modification
+app.post('/api/upload-storefront-photo', (req, res) => {
+  try {
+    const { imageBase64, filename } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: 'imageBase64 parameter is required' });
+    }
+
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '');
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    const destJpg = path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg');
+    const destPng = path.join(__dirname, 'public', 'assets', 'Local et Camion de GGW.png');
+    const destSrcJpg = path.join(__dirname, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
+
+    fs.writeFileSync(destJpg, buffer);
+    fs.writeFileSync(destPng, buffer);
+    if (fs.existsSync(path.dirname(destSrcJpg))) {
+      fs.writeFileSync(destSrcJpg, buffer);
+    }
+
+    console.log('[StoreImage] Successfully wrote official storefront photo:', buffer.length, 'bytes');
+    return res.json({
+      success: true,
+      message: 'Photo officielle du local et camion enregistrée avec succès sans aucune modification.',
+      url: '/assets/ggw_storefront_truck.jpg?t=' + Date.now(),
+      size: buffer.length
+    });
+  } catch (err: any) {
+    console.error('Error saving official store photo:', err);
+    return res.status(500).json({ error: err.message || 'Erreur lors de l’enregistrement de la photo' });
+  }
 });
 
 // 1. Gemini Multi-turn Chat with Search & Maps Grounding
