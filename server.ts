@@ -2,12 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const rootDir = process.cwd();
 
 const app = express();
 const PORT = 3000;
@@ -62,17 +60,17 @@ app.get('/api/health', (req, res) => {
 // Official store image synchronization & direct zero-modification upload
 function checkAndSyncStoreImage(): string | null {
   const possibleSourcePaths = [
-    path.join(__dirname, 'Local et Camion de GGW.png'),
-    path.join(__dirname, 'public', 'Local et Camion de GGW.png'),
-    path.join(__dirname, 'public', 'assets', 'Local et Camion de GGW.png'),
-    path.join(__dirname, 'local_et_camion_de_ggw.png'),
-    path.join(__dirname, 'public', 'assets', 'local_et_camion_de_ggw.png'),
+    path.join(rootDir, 'Local et Camion de GGW.png'),
+    path.join(rootDir, 'public', 'Local et Camion de GGW.png'),
+    path.join(rootDir, 'public', 'assets', 'Local et Camion de GGW.png'),
+    path.join(rootDir, 'local_et_camion_de_ggw.png'),
+    path.join(rootDir, 'public', 'assets', 'local_et_camion_de_ggw.png'),
   ];
 
   for (const src of possibleSourcePaths) {
     if (fs.existsSync(src)) {
-      const destJpg = path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg');
-      const destSrcJpg = path.join(__dirname, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
+      const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
+      const destSrcJpg = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
       try {
         fs.copyFileSync(src, destJpg);
         if (fs.existsSync(path.dirname(destSrcJpg))) {
@@ -90,7 +88,7 @@ checkAndSyncStoreImage();
 
 app.get('/api/official-store-image', (req, res) => {
   const syncedFrom = checkAndSyncStoreImage();
-  const destJpg = path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg');
+  const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
   let exists = false;
   let size = 0;
   let mtime = null;
@@ -114,10 +112,10 @@ app.get('/api/official-store-image', (req, res) => {
 // Direct streaming endpoint for official storefront photo (no cache issues)
 app.get('/api/storefront-photo', (req, res) => {
   const possiblePaths = [
-    path.join(__dirname, 'public', 'assets', 'Local et Camion de GGW.png'),
-    path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg'),
-    path.join(__dirname, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg'),
-    path.join(__dirname, 'public', 'assets', 'haitian_delivery_team_truck.jpg'),
+    path.join(rootDir, 'public', 'assets', 'Local et Camion de GGW.png'),
+    path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg'),
+    path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg'),
+    path.join(rootDir, 'public', 'assets', 'haitian_delivery_team_truck.jpg'),
   ];
 
   for (const p of possiblePaths) {
@@ -143,9 +141,9 @@ app.post('/api/upload-storefront-photo', (req, res) => {
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9.+_-]+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
 
-    const destJpg = path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg');
-    const destPng = path.join(__dirname, 'public', 'assets', 'Local et Camion de GGW.png');
-    const destSrcJpg = path.join(__dirname, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
+    const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
+    const destPng = path.join(rootDir, 'public', 'assets', 'Local et Camion de GGW.png');
+    const destSrcJpg = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
 
     fs.writeFileSync(destJpg, buffer);
     fs.writeFileSync(destPng, buffer);
@@ -426,9 +424,22 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(__dirname, 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    const distPath = path.join(rootDir, 'dist');
+    app.use(express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    }));
+    app.get('*all', (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
