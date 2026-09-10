@@ -103,12 +103,33 @@ app.get('/api/official-store-image', (req, res) => {
   }
 
   res.json({
-    url: '/assets/ggw_storefront_truck.jpg',
+    url: '/api/storefront-photo?t=' + (mtime ? new Date(mtime).getTime() : Date.now()),
     exists,
     size,
     mtime,
     syncedFrom
   });
+});
+
+// Direct streaming endpoint for official storefront photo (no cache issues)
+app.get('/api/storefront-photo', (req, res) => {
+  const possiblePaths = [
+    path.join(__dirname, 'public', 'assets', 'Local et Camion de GGW.png'),
+    path.join(__dirname, 'public', 'assets', 'ggw_storefront_truck.jpg'),
+    path.join(__dirname, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg'),
+    path.join(__dirname, 'public', 'assets', 'haitian_delivery_team_truck.jpg'),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return res.sendFile(p);
+    }
+  }
+
+  return res.status(404).send('Photo not found');
 });
 
 // Upload endpoint for the exact official store & truck photo without any compression or modification
@@ -136,7 +157,7 @@ app.post('/api/upload-storefront-photo', (req, res) => {
     return res.json({
       success: true,
       message: 'Photo officielle du local et camion enregistrée avec succès sans aucune modification.',
-      url: '/assets/ggw_storefront_truck.jpg?t=' + Date.now(),
+      url: '/api/storefront-photo?t=' + Date.now(),
       size: buffer.length
     });
   } catch (err: any) {

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { StorageService } from './services/storage';
+import { getSavedStorePhoto } from './utils/imageStorage';
 import {
   Product,
   ProductCategory,
@@ -80,8 +81,30 @@ export default function App() {
   }>({});
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>('all');
 
+  // Official Storefront Photo State
+  const [officialStorePhoto, setOfficialStorePhoto] = useState<string>(() => {
+    return localStorage.getItem('ggw_official_store_photo') || '/api/storefront-photo';
+  });
+
   // Subscribe to storage updates for real-time reactivity
   useEffect(() => {
+    let isMounted = true;
+    getSavedStorePhoto().then(saved => {
+      if (isMounted && saved) {
+        setOfficialStorePhoto(saved);
+      }
+    });
+
+    const handlePhotoUpdate = (e: any) => {
+      const url = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo');
+      if (url) {
+        setOfficialStorePhoto(url);
+      }
+    };
+
+    window.addEventListener('storage', handlePhotoUpdate);
+    window.addEventListener('ggw_storage_updated', handlePhotoUpdate as EventListener);
+
     const refreshData = () => {
       setSettings(StorageService.getSettings());
       setProducts(StorageService.getProducts());
@@ -95,7 +118,12 @@ export default function App() {
     };
 
     const unsubscribe = StorageService.subscribe(refreshData);
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', handlePhotoUpdate);
+      window.removeEventListener('ggw_storage_updated', handlePhotoUpdate as EventListener);
+      unsubscribe();
+    };
   }, []);
 
   // Handlers for smooth user navigation
@@ -163,6 +191,8 @@ export default function App() {
           onOpenQuote={() => handleOpenQuote()}
           onNavigateToProjects={handleNavigateToProjects}
           onOpenLightbox={handleOpenLightbox}
+          coverPhotoUrl={officialStorePhoto}
+          onUpdateCoverPhoto={(url) => setOfficialStorePhoto(url)}
         />
 
         {/* 2. Physical Shop & Transport Truck Showcase */}
@@ -177,6 +207,8 @@ export default function App() {
             el?.scrollIntoView({ behavior: 'smooth' });
           }}
           onOpenLightbox={handleOpenLightbox}
+          storePhotoUrl={officialStorePhoto}
+          onUpdateStorePhoto={(url) => setOfficialStorePhoto(url)}
         />
 
         {/* 3. Automatic Dynamic Product Carousel */}

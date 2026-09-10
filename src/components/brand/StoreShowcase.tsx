@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Truck, Store, Wrench, ShieldCheck, MapPin, Phone, ArrowRight, CheckCircle2, Maximize2, Upload, Image as ImageIcon } from 'lucide-react';
 import { CompanySettings, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
+import { getSavedStorePhoto, uploadStorePhotoFile } from '../../utils/imageStorage';
 
 interface StoreShowcaseProps {
   settings: CompanySettings;
@@ -11,6 +12,8 @@ interface StoreShowcaseProps {
   onOpenQuote?: () => void;
   onOpenMaps?: () => void;
   onOpenLightbox?: (url: string, title?: string, subtitle?: string) => void;
+  storePhotoUrl?: string;
+  onUpdateStorePhoto?: (url: string) => void;
 }
 
 export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
@@ -20,7 +23,9 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
   onNavigateToContact,
   onOpenQuote,
   onOpenMaps,
-  onOpenLightbox
+  onOpenLightbox,
+  storePhotoUrl: propStorePhotoUrl,
+  onUpdateStorePhoto
 }) => {
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).company;
@@ -29,34 +34,39 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [storePhotoUrl, setStorePhotoUrl] = useState<string>(() => {
-    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+    return propStorePhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/api/storefront-photo';
   });
+
+  // Keep local state in sync if prop changes
+  useEffect(() => {
+    if (propStorePhotoUrl) {
+      setStorePhotoUrl(propStorePhotoUrl);
+    }
+  }, [propStorePhotoUrl]);
 
   // Keep in sync with storage updates or server sync
   useEffect(() => {
-    const handleStorageUpdate = () => {
-      const saved = localStorage.getItem('ggw_official_store_photo');
-      if (saved) {
+    let isMounted = true;
+    getSavedStorePhoto().then(saved => {
+      if (isMounted && saved) {
         setStorePhotoUrl(saved);
+      }
+    });
+
+    const handleStorageUpdate = (e: any) => {
+      const newUrl = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo');
+      if (newUrl) {
+        setStorePhotoUrl(newUrl);
       }
     };
 
     window.addEventListener('storage', handleStorageUpdate);
-    window.addEventListener('ggw_storage_updated', handleStorageUpdate);
-
-    // Also check server for any newly synced image
-    fetch('/api/official-store-image')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.url && !localStorage.getItem('ggw_official_store_photo')) {
-          setStorePhotoUrl(data.url + (data.mtime ? `?t=${new Date(data.mtime).getTime()}` : ''));
-        }
-      })
-      .catch(() => {});
+    window.addEventListener('ggw_storage_updated', handleStorageUpdate as EventListener);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('storage', handleStorageUpdate);
-      window.removeEventListener('ggw_storage_updated', handleStorageUpdate);
+      window.removeEventListener('ggw_storage_updated', handleStorageUpdate as EventListener);
     };
   }, []);
 
@@ -64,34 +74,30 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Instant local preview
+    const objectUrl = URL.createObjectURL(file);
+    setStorePhotoUrl(objectUrl);
+    if (onUpdateStorePhoto) {
+      onUpdateStorePhoto(objectUrl);
+    }
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64Data = event.target?.result as string;
-      if (base64Data) {
-        setStorePhotoUrl(base64Data);
-        localStorage.setItem('ggw_official_store_photo', base64Data);
-        window.dispatchEvent(new Event('ggw_storage_updated'));
 
-        try {
-          await fetch('/api/upload-storefront-photo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              imageBase64: base64Data,
-              filename: file.name
-            })
-          });
-          setUploadSuccess(true);
-          setTimeout(() => setUploadSuccess(false), 4000);
-        } catch (err) {
-          console.error('Error saving image to server:', err);
-        } finally {
-          setIsUploading(false);
-        }
+    try {
+      const finalUrl = await uploadStorePhotoFile(file);
+      setStorePhotoUrl(finalUrl);
+      if (onUpdateStorePhoto) {
+        onUpdateStorePhoto(finalUrl);
       }
-    };
-    reader.readAsDataURL(file);
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 4000);
+    } catch (err) {
+      console.error('Error saving image to server:', err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleOpenPhoto = () => {

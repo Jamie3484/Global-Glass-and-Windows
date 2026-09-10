@@ -7,11 +7,13 @@ import {
   MapPin,
   Maximize2,
   Upload,
-  Check
+  Check,
+  Building2
 } from 'lucide-react';
 import { LogoBadge } from '../brand/LogoBadge';
 import { CompanySettings, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
+import { getSavedStorePhoto, uploadStorePhotoFile } from '../../utils/imageStorage';
 
 interface HeroSectionProps {
   settings: CompanySettings;
@@ -20,6 +22,8 @@ interface HeroSectionProps {
   onNavigateToProjects: () => void;
   onNavigateToCalculator?: () => void;
   onOpenLightbox?: (imageUrl: string, title: string, caption?: string) => void;
+  coverPhotoUrl?: string;
+  onUpdateCoverPhoto?: (url: string) => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -28,29 +32,50 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onOpenQuote,
   onNavigateToProjects,
   onNavigateToCalculator,
-  onOpenLightbox
+  onOpenLightbox,
+  coverPhotoUrl: propCoverPhotoUrl,
+  onUpdateCoverPhoto
 }) => {
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).hero;
 
   const [heroPhotoUrl, setHeroPhotoUrl] = useState<string>(() => {
-    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+    return propCoverPhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/api/storefront-photo';
   });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
+  // Keep local state in sync if prop changes
   useEffect(() => {
-    const handleUpdate = () => {
-      const saved = localStorage.getItem('ggw_official_store_photo');
-      if (saved) setHeroPhotoUrl(saved);
+    if (propCoverPhotoUrl) {
+      setHeroPhotoUrl(propCoverPhotoUrl);
+    }
+  }, [propCoverPhotoUrl]);
+
+  // Load from IndexedDB / Server on initial mount
+  useEffect(() => {
+    let isMounted = true;
+    getSavedStorePhoto().then(saved => {
+      if (isMounted && saved) {
+        setHeroPhotoUrl(saved);
+      }
+    });
+
+    const handleUpdate = (e: any) => {
+      const newUrl = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo');
+      if (newUrl) {
+        setHeroPhotoUrl(newUrl);
+      }
     };
+
     window.addEventListener('storage', handleUpdate);
-    window.addEventListener('ggw_storage_updated', handleUpdate);
+    window.addEventListener('ggw_storage_updated', handleUpdate as EventListener);
     return () => {
+      isMounted = false;
       window.removeEventListener('storage', handleUpdate);
-      window.removeEventListener('ggw_storage_updated', handleUpdate);
+      window.removeEventListener('ggw_storage_updated', handleUpdate as EventListener);
     };
   }, []);
 
@@ -58,34 +83,32 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1. Instant 0ms local preview using object URL so the image replaces the old one immediately
+    const objectUrl = URL.createObjectURL(file);
+    setHeroPhotoUrl(objectUrl);
+    if (onUpdateCoverPhoto) {
+      onUpdateCoverPhoto(objectUrl);
+    }
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64Data = event.target?.result as string;
-      if (base64Data) {
-        setHeroPhotoUrl(base64Data);
-        localStorage.setItem('ggw_official_store_photo', base64Data);
-        window.dispatchEvent(new Event('ggw_storage_updated'));
 
-        try {
-          await fetch('/api/upload-storefront-photo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              imageBase64: base64Data,
-              filename: file.name
-            })
-          });
-          setUploadSuccess(true);
-          setTimeout(() => setUploadSuccess(false), 4000);
-        } catch (err) {
-          console.error('Error saving image to server:', err);
-        } finally {
-          setIsUploading(false);
-        }
+    try {
+      // 2. Persistent storage in IndexedDB (handles large images) and server upload
+      const finalUrl = await uploadStorePhotoFile(file);
+      setHeroPhotoUrl(finalUrl);
+      if (onUpdateCoverPhoto) {
+        onUpdateCoverPhoto(finalUrl);
       }
-    };
-    reader.readAsDataURL(file);
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 4000);
+    } catch (err) {
+      console.error('Error saving image:', err);
+    } finally {
+      setIsUploading(false);
+      // Reset input value so selecting the same file or a different one triggers change reliably
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleOpenPhotoFullscreen = () => {
@@ -106,13 +129,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       */}
       <div className="absolute inset-0 z-0">
         <img
+          key={heroPhotoUrl}
           src={heroPhotoUrl}
           alt="Local et Camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
-          className="w-full h-full object-cover object-center"
+          className="w-full h-full object-cover object-center transition-opacity duration-300"
           referrerPolicy="no-referrer"
         />
         {/* Voile d'ambiance très léger et transparent uniquement pour garantir le contraste du texte sans altérer l'image */}
-        <div className="absolute inset-0 bg-slate-950/25 pointer-events-none" />
+        <div className="absolute inset-0 bg-slate-950/30 pointer-events-none" />
       </div>
 
       {/* Boutons d'accès rapide pour la photo réelle de l'établissement et remplacement direct */}
@@ -127,11 +151,25 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         />
 
         {uploadSuccess && (
-          <span className="inline-flex items-center gap-1.5 bg-emerald-600/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-emerald-400 backdrop-blur-sm">
+          <span className="inline-flex items-center gap-1.5 bg-emerald-600/95 text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-lg border border-emerald-400 backdrop-blur-sm animate-pulse">
             <Check className="w-3.5 h-3.5 text-white" />
-            <span>Image mise à jour !</span>
+            <span>Image remplacée avec succès !</span>
           </span>
         )}
+
+        {/* Miniature de prévisualisation cliquable */}
+        <div 
+          onClick={handleOpenPhotoFullscreen}
+          className="hidden sm:flex items-center gap-1.5 bg-black/40 hover:bg-black/60 p-1 pr-2.5 rounded-full border border-white/30 backdrop-blur-md cursor-pointer transition"
+          title="Cliquer pour agrandir la photo actuelle"
+        >
+          <img
+            src={heroPhotoUrl}
+            alt="Miniature"
+            className="w-6 h-6 rounded-full object-cover border border-[#B6D232]"
+          />
+          <span className="text-[11px] font-semibold text-slate-200">Photo actuelle</span>
+        </div>
 
         {/* Bouton Remplacer l'image */}
         <button
@@ -140,10 +178,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
           className="inline-flex items-center gap-2 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] text-xs font-black px-3.5 py-2 rounded-full shadow-lg border border-white/60 backdrop-blur-md transition-all cursor-pointer disabled:opacity-50 hover:scale-105 active:scale-95"
-          title="Sélectionner une nouvelle photo pour la couverture du site (photo réelle de l'établissement)"
+          title="Sélectionner une nouvelle photo pour remplacer l'image de couverture et la photo réelle"
         >
           <Upload className="w-3.5 h-3.5 text-[#340648]" />
-          <span>{isUploading ? 'Chargement...' : "Remplacer l'image"}</span>
+          <span>{isUploading ? 'Remplacement en cours...' : "Remplacer l'image"}</span>
         </button>
 
         {/* Bouton Agrandir / Photo réelle de l'établissement */}
@@ -250,8 +288,46 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               />
             </div>
 
+            {/* Carte Photo Réelle de l'Établissement & Camion (Directement visible en couverture) */}
+            <div className="mt-5 w-full max-w-sm bg-[#230331]/90 backdrop-blur-md rounded-2xl p-3 border-2 border-[#B6D232]/50 shadow-2xl overflow-hidden group">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-[11px] font-black text-[#B6D232] flex items-center gap-1.5 uppercase tracking-wider">
+                  <Building2 className="w-3.5 h-3.5" />
+                  Photo réelle de l'établissement
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[11px] font-bold text-white/90 hover:text-[#B6D232] flex items-center gap-1 cursor-pointer transition"
+                >
+                  <Upload className="w-3 h-3" />
+                  <span>Remplacer</span>
+                </button>
+              </div>
+
+              <div 
+                onClick={handleOpenPhotoFullscreen}
+                className="relative aspect-[16/10] w-full rounded-xl overflow-hidden cursor-pointer border border-white/20 bg-slate-950"
+                title="Cliquer pour agrandir la photo en plein écran"
+              >
+                <img
+                  key={heroPhotoUrl}
+                  src={heroPhotoUrl}
+                  alt="Photo réelle de l'établissement et camion GGW à Petit-Goâve"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <span className="bg-[#340648]/90 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-[#B6D232] shadow-lg">
+                    <Maximize2 className="w-3.5 h-3.5 text-[#B6D232]" />
+                    Plein écran
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Bottom Quick Call info pill */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3 bg-[#230331]/85 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/20 text-xs text-slate-100 shadow-xl">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3 bg-[#230331]/85 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/20 text-xs text-slate-100 shadow-xl">
               <span className="text-slate-300 font-medium">Ligne directe :</span>
               <a
                 href={`tel:${settings.phone1.replace(/[^0-9+]/g, '')}`}
