@@ -15,6 +15,7 @@ import {
 import { LogoMain } from '../brand/LogoMain';
 import { CompanySettings, Language, ProductCategory } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
+import { scrollToSection, scrollToTop } from '../../utils/scroll';
 
 interface FooterProps {
   settings: CompanySettings;
@@ -124,28 +125,31 @@ export const Footer: React.FC<FooterProps> = ({
             </h3>
             <ul className="space-y-2.5 text-xs text-slate-300 font-medium">
               <li>
-                <a href="#accueil" className="hover:text-[#B6D232] transition-colors">Accueil</a>
+                <button onClick={() => scrollToSection('accueil')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Accueil</button>
               </li>
               <li>
-                <a href="#notre-entreprise" className="hover:text-[#B6D232] transition-colors">Notre Entreprise</a>
+                <button onClick={() => scrollToSection('notre-entreprise')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Notre Entreprise</button>
               </li>
               <li>
-                <a href="#produits" className="hover:text-[#B6D232] transition-colors">Catalogue Produits</a>
+                <button onClick={() => scrollToSection('produits')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Catalogue Produits</button>
               </li>
               <li>
-                <a href="#services" className="hover:text-[#B6D232] transition-colors">Nos Services</a>
+                <button onClick={() => scrollToSection('services')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Nos 14 Services</button>
               </li>
               <li>
-                <a href="#realisations" className="hover:text-[#B6D232] transition-colors">Nos Réalisations</a>
+                <button onClick={() => scrollToSection('realisations')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Nos Réalisations</button>
               </li>
               <li>
-                <a href="#videos" className="hover:text-[#B6D232] transition-colors">Galerie Vidéos</a>
+                <button onClick={() => scrollToSection('videos')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Galerie Vidéos</button>
               </li>
               <li>
-                <a href="#avis" className="hover:text-[#B6D232] transition-colors">Avis Clients</a>
+                <button onClick={() => scrollToSection('avis')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Avis Clients</button>
               </li>
               <li>
-                <a href="#contact" className="hover:text-[#B6D232] transition-colors">Contact & Devis</a>
+                <button onClick={() => scrollToSection('devis')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Demande de Devis</button>
+              </li>
+              <li>
+                <button onClick={() => scrollToSection('contact')} className="hover:text-[#B6D232] transition-colors cursor-pointer text-left">Contact & Atelier</button>
               </li>
             </ul>
           </div>
@@ -161,8 +165,7 @@ export const Footer: React.FC<FooterProps> = ({
                   <button
                     onClick={() => {
                       onSelectCategory?.(c.slug);
-                      const el = document.querySelector('#produits');
-                      el?.scrollIntoView({ behavior: 'smooth' });
+                      scrollToSection('produits');
                     }}
                     className="hover:text-[#B6D232] text-left transition-colors flex items-center gap-1.5 cursor-pointer"
                   >

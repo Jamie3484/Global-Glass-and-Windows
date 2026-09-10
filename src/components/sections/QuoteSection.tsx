@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FileText,
   UploadCloud,
@@ -55,6 +55,23 @@ export const QuoteSection: React.FC<QuoteSectionProps> = ({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Reactively prefill when user clicks "Demander un devis" from another section
+  useEffect(() => {
+    if (initialProductOrService) {
+      setProductOrService(initialProductOrService);
+      setSubmitted(false);
+    }
+  }, [initialProductOrService]);
+
+  useEffect(() => {
+    if (initialDimensions) {
+      if (initialDimensions.lengthInches !== undefined) setLengthInches(initialDimensions.lengthInches);
+      if (initialDimensions.widthInches !== undefined) setWidthInches(initialDimensions.widthInches);
+      if (initialDimensions.quantity !== undefined) setQuantity(initialDimensions.quantity);
+      if (initialDimensions.glassType !== undefined) setGlassType(initialDimensions.glassType);
+    }
+  }, [initialDimensions]);
 
   // Handle Drag and Drop / File upload
   const handleFileUpload = async (files: FileList | null) => {

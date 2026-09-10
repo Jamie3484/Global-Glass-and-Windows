@@ -14,6 +14,7 @@ import {
 import { LogoMain } from '../brand/LogoMain';
 import { CompanySettings, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
+import { scrollToSection } from '../../utils/scroll';
 
 interface HeaderProps {
   settings: CompanySettings;
@@ -53,8 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (onOpenSearch) {
       onOpenSearch();
     } else {
-      const el = document.querySelector('#produits');
-      el?.scrollIntoView({ behavior: 'smooth' });
+      scrollToSection('produits');
     }
   };
 
@@ -83,10 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleNavClick = (href: string) => {
     setMobileMenuOpen(false);
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+    scrollToSection(href);
   };
 
   return (

@@ -22,7 +22,9 @@ import {
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { FloatingWhatsApp } from './components/layout/FloatingWhatsApp';
+import { QuickNavigator } from './components/navigation/QuickNavigator';
 import { StoreShowcase } from './components/brand/StoreShowcase';
+import { scrollToSection } from './utils/scroll';
 
 // Sections
 import { HeroSection } from './components/sections/HeroSection';
@@ -131,23 +133,19 @@ export default function App() {
     if (productOrService) {
       setQuotePrefillProduct(productOrService);
     }
-    const el = document.querySelector('#devis');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    scrollToSection('devis');
   };
 
   const handleNavigateToProjects = () => {
-    const el = document.querySelector('#realisations');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    scrollToSection('realisations');
   };
 
   const handleNavigateToServices = () => {
-    const el = document.querySelector('#services');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    scrollToSection('services');
   };
 
   const handleNavigateToContact = () => {
-    const el = document.querySelector('#contact');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    scrollToSection('contact');
   };
 
   const handleOpenLightbox = (imageUrl: string, title: string, caption?: string) => {
@@ -289,6 +287,9 @@ export default function App() {
           setSelectedCategorySlug(slug);
         }}
       />
+
+      {/* Quick Navigation Controller (Scroll Up / Down / Quick Jump) */}
+      <QuickNavigator lang={lang} />
 
       {/* Persistent Floating WhatsApp Button */}
       <FloatingWhatsApp settings={settings} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
   Layers,
@@ -13,6 +13,7 @@ import {
 import { Product, ProductCategory, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
 import { CommercialCard } from '../brand/CommercialCard';
+import { scrollToSection } from '../../utils/scroll';
 
 interface CategoriesSectionProps {
   categories: ProductCategory[];
@@ -37,9 +38,18 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).categories;
 
-  const handleTabChange = (slug: string) => {
+  useEffect(() => {
+    if (selectedCategorySlug) {
+      setActiveSlug(selectedCategorySlug);
+    }
+  }, [selectedCategorySlug]);
+
+  const handleTabChange = (slug: string, scrollDown: boolean = false) => {
     setActiveSlug(slug);
     onSelectCategorySlug?.(slug);
+    if (scrollDown) {
+      scrollToSection('category-filter-pills', 100);
+    }
   };
 
   const filteredProducts = activeSlug === 'all'
@@ -71,12 +81,12 @@ export const CategoriesSection: React.FC<CategoriesSectionProps> = ({
         <div className="mb-14">
           <CommercialCard
             categories={categories}
-            onSelectCategory={(slug) => handleTabChange(slug)}
+            onSelectCategory={(slug) => handleTabChange(slug, true)}
           />
         </div>
 
         {/* Category Filter Pills */}
-        <div className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar">
+        <div id="category-filter-pills" className="flex items-center justify-start md:justify-center gap-2 overflow-x-auto pb-4 mb-8 no-scrollbar scroll-mt-24">
           <button
             onClick={() => handleTabChange('all')}
             className={`px-5 py-2.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all shadow-sm cursor-pointer ${
