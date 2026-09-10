@@ -1812,6 +1812,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="w-full sm:w-64 aspect-[16/9] rounded-xl overflow-hidden border-2 border-slate-600 bg-slate-950 flex-shrink-0">
                         <img
                           src={adminStorePhoto}
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (!target.src.endsWith('/assets/ggw_storefront_truck.jpg')) {
+                              target.src = '/assets/ggw_storefront_truck.jpg';
+                            }
+                          }}
                           alt="Local & Camion"
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"

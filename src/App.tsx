@@ -85,7 +85,7 @@ export default function App() {
 
   // Official Storefront Photo State
   const [officialStorePhoto, setOfficialStorePhoto] = useState<string>(() => {
-    return localStorage.getItem('ggw_official_store_photo') || '/api/storefront-photo';
+    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
   });
 
   // Subscribe to storage updates for real-time reactivity

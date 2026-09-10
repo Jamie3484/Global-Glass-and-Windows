@@ -34,7 +34,7 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [storePhotoUrl, setStorePhotoUrl] = useState<string>(() => {
-    return propStorePhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/api/storefront-photo';
+    return propStorePhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
   });
 
   // Keep local state in sync if prop changes
@@ -131,6 +131,12 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
               >
                 <img
                   src={storePhotoUrl}
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.endsWith('/assets/ggw_storefront_truck.jpg')) {
+                      target.src = '/assets/ggw_storefront_truck.jpg';
+                    }
+                  }}
                   alt="Local officiel et camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
                   className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]"
                   referrerPolicy="no-referrer"

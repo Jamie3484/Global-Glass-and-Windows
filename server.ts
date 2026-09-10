@@ -69,14 +69,20 @@ function checkAndSyncStoreImage(): string | null {
 
   for (const src of possibleSourcePaths) {
     if (fs.existsSync(src)) {
-      const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
-      const destSrcJpg = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
       try {
-        fs.copyFileSync(src, destJpg);
-        if (fs.existsSync(path.dirname(destSrcJpg))) {
-          fs.copyFileSync(src, destSrcJpg);
+        const stat = fs.statSync(src);
+        // Only sync if file is an actual image (not a corrupt/dummy placeholder < 2KB)
+        if (stat.size > 2048) {
+          const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
+          const destSrcJpg = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
+          const destSrcJpg2 = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1789069344264.jpg');
+          fs.copyFileSync(src, destJpg);
+          if (fs.existsSync(path.dirname(destSrcJpg))) {
+            fs.copyFileSync(src, destSrcJpg);
+            fs.copyFileSync(src, destSrcJpg2);
+          }
+          return src;
         }
-        return src;
       } catch (err) {
         console.error('[StoreImage] Error copying store image:', err);
       }
@@ -144,11 +150,22 @@ app.post('/api/upload-storefront-photo', (req, res) => {
     const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
     const destPng = path.join(rootDir, 'public', 'assets', 'Local et Camion de GGW.png');
     const destSrcJpg = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
+    const destSrcJpg2 = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1789069344264.jpg');
 
     fs.writeFileSync(destJpg, buffer);
     fs.writeFileSync(destPng, buffer);
     if (fs.existsSync(path.dirname(destSrcJpg))) {
       fs.writeFileSync(destSrcJpg, buffer);
+      fs.writeFileSync(destSrcJpg2, buffer);
+    }
+    const distAssetsDir = path.join(rootDir, 'dist', 'assets');
+    if (fs.existsSync(distAssetsDir)) {
+      try {
+        fs.writeFileSync(path.join(distAssetsDir, 'ggw_storefront_truck.jpg'), buffer);
+        fs.writeFileSync(path.join(distAssetsDir, 'Local et Camion de GGW.png'), buffer);
+      } catch (e) {
+        // Ignore dist write error
+      }
     }
 
     console.log('[StoreImage] Successfully wrote official storefront photo:', buffer.length, 'bytes');

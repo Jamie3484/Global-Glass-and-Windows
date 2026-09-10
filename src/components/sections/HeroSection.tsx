@@ -40,7 +40,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).hero;
 
   const [heroPhotoUrl, setHeroPhotoUrl] = useState<string>(() => {
-    return propCoverPhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/api/storefront-photo';
+    return propCoverPhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
   });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -131,6 +131,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <img
           key={heroPhotoUrl}
           src={heroPhotoUrl}
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (!target.src.endsWith('/assets/ggw_storefront_truck.jpg')) {
+              target.src = '/assets/ggw_storefront_truck.jpg';
+            }
+          }}
           alt="Local et Camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
           className="w-full h-full object-cover object-center transition-opacity duration-300"
           referrerPolicy="no-referrer"

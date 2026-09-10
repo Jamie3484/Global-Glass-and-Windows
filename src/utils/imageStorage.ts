@@ -45,8 +45,8 @@ export async function getSavedStorePhoto(): Promise<string | null> {
     // Ignore quota or security errors
   }
 
-  // 3. Fallback to server endpoint
-  return '/api/storefront-photo?t=' + Date.now();
+  // 3. Fallback to bundled static asset (works on GitHub, GitHub Pages, Vercel, Netlify, and Cloud Run)
+  return '/assets/ggw_storefront_truck.jpg';
 }
 
 export async function saveStorePhoto(dataUrl: string): Promise<void> {
