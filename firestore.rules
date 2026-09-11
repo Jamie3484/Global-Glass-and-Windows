@@ -5,55 +5,71 @@ service cloud.firestore {
     function isAuthenticated() {
       return request.auth != null;
     }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'globalglassandw.2023@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Public readable content
+    // Public readable content (Products, Categories, Projects, Videos, Services, Settings)
     match /settings/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
+    
     match /products/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
+    
     match /categories/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
+    
     match /projects/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
+    
     match /services/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
+    
     match /videos/{document=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAdmin();
     }
 
     // User submissions: Devis, Contact messages, Reviews
     match /quotes/{quoteId} {
       allow create: if true;
-      allow read, update, delete: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
+    
     match /messages/{messageId} {
       allow create: if true;
-      allow read, update, delete: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
+    
     match /reviews/{reviewId} {
-      allow read: if resource.data.status == 'approved' || isAuthenticated();
+      allow read: if resource.data.status == 'approved' || isAdmin();
       allow create: if true;
-      allow update, delete: if isAuthenticated();
+      allow update, delete: if isAdmin();
     }
 
     // User profiles & AI Generations
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) || isAdmin();
     }
+    
     match /ai_creations/{docId} {
       allow read, write: if true;
     }

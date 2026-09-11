@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Shield,
   X,
@@ -48,7 +48,8 @@ import {
 } from '../../types';
 import { StorageService } from '../../services/storage';
 import { processImportedFile } from '../../services/mediaService';
-import { signInWithGoogle } from '../../services/firebase';
+import { signInWithGoogle, subscribeToAuth, logOut } from '../../services/firebase';
+import { User } from 'firebase/auth';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -76,9 +77,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   settings
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Synchronize with Firebase Auth to auto-authenticate admin
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user);
+      if (user) {
+        // Authenticate if user is signed in with the admin email or authenticated
+        setIsAuthenticated(true);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const [activeTab, setActiveTab] = useState<
     'overview' | 'quotes' | 'reviews' | 'messages' | 'products' | 'projects' | 'videos' | 'settings'
@@ -504,13 +518,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <div className="flex items-center gap-3">
             {isAuthenticated && (
-              <button
-                onClick={() => setIsAuthenticated(false)}
-                className="text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1 bg-white/10 px-3 py-1.5 rounded-lg"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Déconnexion</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {currentUser?.email ? (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] bg-slate-800 text-[#B6D232] px-2.5 py-1 rounded-lg border border-[#B6D232]/30 font-mono font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>{currentUser.email}</span>
+                  </span>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] bg-slate-800 text-[#B6D232] px-2.5 py-1 rounded-lg border border-[#B6D232]/30 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    <span>Admin Connecté</span>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsAuthenticated(false);
+                    try {
+                      await logOut();
+                    } catch (e) {
+                      console.warn('Logout error:', e);
+                    }
+                  }}
+                  className="text-xs font-bold text-slate-300 hover:text-white flex items-center gap-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Déconnexion</span>
+                </button>
+              </div>
             )}
             <button
               onClick={onClose}

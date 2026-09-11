@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Un produit de vitrerie ou menuiserie aluminium du catalogue Global Glass and Windows",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "isNew": { "type": "boolean" },
+        "inStock": { "type": "boolean" },
+        "featured": { "type": "boolean" }
+      },
+      "required": ["id", "name", "category", "description"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Catégorie de produit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Réalisation ou chantier réalisé par Global Glass and Windows",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "location": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "beforeImageUrl": { "type": "string" },
+        "hasBeforeAfter": { "type": "boolean" }
+      },
+      "required": ["id", "title", "category", "description"]
+    },
+    "Video": {
+      "title": "Video",
+      "description": "Vidéo d'atelier ou de chantier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "title", "videoUrl"]
+    },
+    "Quote": {
+      "title": "Quote",
+      "description": "Demande de devis soumise par un client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "email": { "type": "string" },
+        "city": { "type": "string" },
+        "productOrService": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "fullName", "phone", "description"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Message de contact envoyé par un visiteur",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "fullName", "phone", "message"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Avis client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "name", "rating", "comment"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Paramètres de l'entreprise Global Glass and Windows",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string" },
+        "slogan": { "type": "string" },
+        "address": { "type": "string" },
+        "phone1": { "type": "string" },
+        "phone2": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["companyName", "phone1", "address"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "Product" },
+      "description": "Catalogue des produits"
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "Category" },
+      "description": "Catégories de produits"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "Project" },
+      "description": "Réalisations et chantiers"
+    },
+    "/videos/{videoId}": {
+      "schema": { "$ref": "Video" },
+      "description": "Vidéos de l'atelier et chantiers"
+    },
+    "/quotes/{quoteId}": {
+      "schema": { "$ref": "Quote" },
+      "description": "Demandes de devis des clients"
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "Message" },
+      "description": "Messages reçus via le formulaire de contact"
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "Review" },
+      "description": "Avis clients"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "Settings" },
+      "description": "Paramètres généraux de l'entreprise"
+    }
+  }
+}
