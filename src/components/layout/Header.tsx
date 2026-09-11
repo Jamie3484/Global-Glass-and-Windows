@@ -150,13 +150,14 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {/* Admin link button */}
+            {/* Espace Administration link button */}
             <button
               onClick={onOpenAdmin}
-              className="flex items-center gap-1 text-slate-300 hover:text-white text-[11px] font-semibold transition-colors"
+              className="flex items-center gap-1.5 bg-[#340648] hover:bg-[#B6D232] text-[#B6D232] hover:text-[#340648] px-2.5 py-1 rounded-lg text-[11px] font-extrabold border border-[#B6D232]/50 transition-all shadow-sm cursor-pointer"
+              title="Accès réservé uniquement à l'administrateur"
             >
-              <Shield className="w-3 h-3 text-[#B6D232]" />
-              <span className="hidden md:inline">Admin</span>
+              <Shield className="w-3.5 h-3.5" />
+              <span>Espace Admin</span>
             </button>
           </div>
         </div>
@@ -275,6 +276,15 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>WhatsApp</span>
                 </a>
               </div>
+
+              {/* Admin Portal in Mobile Menu */}
+              <button
+                onClick={() => { setMobileMenuOpen(false); onOpenAdmin(); }}
+                className="w-full bg-slate-900 hover:bg-[#340648] text-[#B6D232] font-extrabold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 border border-[#B6D232]/40 transition-colors cursor-pointer"
+              >
+                <Shield className="w-4 h-4" />
+                <span>Espace Administration (Accès réservé)</span>
+              </button>
             </div>
 
           </div>

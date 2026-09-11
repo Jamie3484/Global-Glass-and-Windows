@@ -40,6 +40,7 @@ import {
   ProductImage,
   ProductVideo,
   Project,
+  VideoItem,
   QuoteRequest,
   CommentReview,
   ContactMessage,
@@ -47,6 +48,7 @@ import {
 } from '../../types';
 import { StorageService } from '../../services/storage';
 import { processImportedFile } from '../../services/mediaService';
+import { signInWithGoogle } from '../../services/firebase';
 
 interface AdminDashboardProps {
   isOpen: boolean;
@@ -54,6 +56,7 @@ interface AdminDashboardProps {
   products: Product[];
   categories: ProductCategory[];
   projects: Project[];
+  videos?: VideoItem[];
   quotes: QuoteRequest[];
   reviews: CommentReview[];
   messages: ContactMessage[];
@@ -66,6 +69,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   products,
   categories,
   projects,
+  videos = [],
   quotes,
   reviews,
   messages,
@@ -74,9 +78,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'quotes' | 'reviews' | 'messages' | 'products' | 'projects' | 'settings'
+    'overview' | 'quotes' | 'reviews' | 'messages' | 'products' | 'projects' | 'videos' | 'settings'
   >('overview');
 
   // Selected Item Modals / Viewers
@@ -84,17 +89,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingSettings, setEditingSettings] = useState<CompanySettings>(settings);
   const [settingsSavedMsg, setSettingsSavedMsg] = useState(false);
 
-  // New Product Modal State
+  // New Product Modal State (Prices removed from site products)
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProdName, setNewProdName] = useState('');
   const [newProdCat, setNewProdCat] = useState(categories[0]?.id || '');
   const [newProdDesc, setNewProdDesc] = useState('');
-  const [newProdPrice, setNewProdPrice] = useState<number>(0);
   const [newProdImg, setNewProdImg] = useState('');
   const [newProdImages, setNewProdImages] = useState<ProductImage[]>([]);
   const [newProdVideos, setNewProdVideos] = useState<ProductVideo[]>([]);
   const [newVideoUrlInput, setNewVideoUrlInput] = useState('');
   const [isProcessingMedia, setIsProcessingMedia] = useState(false);
+
+  // New Project Form State
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [newProjTitle, setNewProjTitle] = useState('');
+  const [newProjCategory, setNewProjCategory] = useState<'residentiel' | 'commercial' | 'renovation'>('residentiel');
+  const [newProjLocation, setNewProjLocation] = useState('Petit-Goâve, Haïti');
+  const [newProjDesc, setNewProjDesc] = useState('');
+  const [newProjMainImg, setNewProjMainImg] = useState('');
+  const [newProjHasBeforeAfter, setNewProjHasBeforeAfter] = useState(false);
+  const [newProjBeforeImg, setNewProjBeforeImg] = useState('');
+  const [newProjAfterImg, setNewProjAfterImg] = useState('');
+  const [isProcessingProjMedia, setIsProcessingProjMedia] = useState(false);
+
+  // New Video Form State
+  const [isAddingVideo, setIsAddingVideo] = useState(false);
+  const [newVidTitle, setNewVidTitle] = useState('');
+  const [newVidCategory, setNewVidCategory] = useState<VideoItem['category']>('atelier');
+  const [newVidUrl, setNewVidUrl] = useState('');
+  const [newVidDesc, setNewVidDesc] = useState('');
+  const [videoToDeleteId, setVideoToDeleteId] = useState<string | null>(null);
 
   // Dedicated Media Manager for existing products
   const [managingProduct, setManagingProduct] = useState<Product | null>(null);
@@ -318,7 +342,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setIsAuthenticated(true);
       setAuthError('');
     } else {
-      setAuthError('Mot de passe administrateur incorrect. (Astuce : ggw2026admin)');
+      setAuthError('Mot de passe administrateur incorrect.');
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    setAuthError('');
+    try {
+      const user = await signInWithGoogle();
+      if (user) {
+        setIsAuthenticated(true);
+      }
+    } catch (err: any) {
+      console.warn('Google sign in:', err);
+      setAuthError('Connexion Google annulée ou impossible. Vous pouvez utiliser le mot de passe.');
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -358,8 +398,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       images: finalImages,
       videos: newProdVideos,
       features: ['Fabrication sur mesure', 'Aluminium de première qualité', 'Finition soignée'],
-      price: newProdPrice > 0 ? newProdPrice : undefined,
-      priceUnit: 'pièce',
       status: 'published',
       isFeatured: true,
       showOnHome: true,
@@ -372,11 +410,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setIsAddingProduct(false);
     setNewProdName('');
     setNewProdDesc('');
-    setNewProdPrice(0);
     setNewProdImg('');
     setNewProdImages([]);
     setNewProdVideos([]);
     setNewVideoUrlInput('');
+  };
+
+  const handleAddProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjTitle) return;
+
+    const mainImageUrl = newProjMainImg || newProjAfterImg || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=80';
+
+    const newProject: Project = {
+      id: `proj-${Date.now()}`,
+      title: newProjTitle,
+      category: newProjCategory,
+      location: newProjLocation || 'Petit-Goâve, Haïti',
+      description: newProjDesc,
+      date: new Date().toISOString().split('T')[0],
+      hasBeforeAfter: newProjHasBeforeAfter,
+      beforeImage: newProjHasBeforeAfter ? newProjBeforeImg : undefined,
+      afterImage: newProjHasBeforeAfter ? newProjAfterImg : undefined,
+      images: [
+        {
+          id: `img-proj-${Date.now()}`,
+          url: mainImageUrl,
+          caption: newProjTitle,
+          type: 'standard'
+        }
+      ],
+      isFeatured: true
+    };
+
+    StorageService.saveProject(newProject);
+    setIsAddingProject(false);
+    setNewProjTitle('');
+    setNewProjDesc('');
+    setNewProjMainImg('');
+    setNewProjBeforeImg('');
+    setNewProjAfterImg('');
+    setNewProjHasBeforeAfter(false);
+  };
+
+  const handleAddVideoSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVidTitle || !newVidUrl) return;
+
+    const newVideo: VideoItem = {
+      id: `vid-${Date.now()}`,
+      title: newVidTitle,
+      description: newVidDesc,
+      videoUrl: newVidUrl,
+      thumbnailUrl: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=800&q=80',
+      category: newVidCategory,
+      date: new Date().toISOString().split('T')[0],
+      status: 'published',
+      order: (videos?.length || 0) + 1
+    };
+
+    StorageService.saveVideo(newVideo);
+    setIsAddingVideo(false);
+    setNewVidTitle('');
+    setNewVidDesc('');
+    setNewVidUrl('');
   };
 
   const unreadQuotesCount = quotes.filter(q => q.status === 'new').length;
@@ -427,25 +524,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* Not Authenticated Screen */}
         {!isAuthenticated ? (
-          <div className="flex-1 flex items-center justify-center p-6">
-            <div className="bg-slate-800 p-8 rounded-3xl max-w-md w-full border border-slate-700 shadow-xl text-center">
-              <div className="w-16 h-16 rounded-full bg-[#340648] text-[#B6D232] flex items-center justify-center mx-auto mb-4 border border-[#B6D232]">
-                <Lock className="w-8 h-8" />
+          <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+            <div className="bg-slate-800 p-6 sm:p-8 rounded-3xl max-w-md w-full border-2 border-[#340648] shadow-2xl text-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#340648] text-[#B6D232] flex items-center justify-center mx-auto mb-4 border-2 border-[#B6D232] shadow-lg">
+                <Shield className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-black text-white mb-2">
-                Accès Sécurisé
+              <h3 className="text-xl sm:text-2xl font-black text-white mb-2">
+                Espace Administration
               </h3>
-              <p className="text-xs text-slate-400 mb-6 font-medium">
-                Veuillez saisir le mot de passe pour gérer les devis, modérer les avis clients et mettre à jour le catalogue.
+              <p className="text-xs text-slate-300 mb-6 font-medium leading-relaxed">
+                Cet espace est <strong>strictement réservé à l'administrateur</strong> pour modifier les données du site (produits, réalisations, vidéos, coordonnées et devis).
               </p>
+
+              {/* Google Sign-in button */}
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+                className="w-full bg-white hover:bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-3 shadow-md border border-slate-300 mb-4 cursor-pointer disabled:opacity-60"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <span>{isGoogleLoading ? 'Connexion en cours...' : 'Se connecter avec Google (Admin)'}</span>
+              </button>
+
+              <div className="relative flex py-2 items-center mb-4">
+                <div className="flex-grow border-t border-slate-700"></div>
+                <span className="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400">ou mot de passe master</span>
+                <div className="flex-grow border-t border-slate-700"></div>
+              </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <input
                   type="password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
-                  placeholder="Mot de passe admin (ggw2026admin)"
-                  className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm font-semibold focus:border-[#B6D232] focus:outline-none"
+                  placeholder="Mot de passe administrateur"
+                  className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm font-semibold focus:border-[#B6D232] focus:outline-none placeholder:text-slate-500"
                   autoFocus
                 />
 
@@ -455,11 +574,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black py-3 rounded-xl text-sm transition-all cursor-pointer shadow-lg"
+                  className="w-full bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black py-3 rounded-xl text-sm transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2"
                 >
-                  Ouvrir le Tableau de Bord
+                  <Lock className="w-4 h-4 text-[#340648]" />
+                  <span>Accéder à l'Administration</span>
                 </button>
               </form>
+
+              <p className="text-[11px] text-slate-400 mt-4">
+                Mot de passe admin : <code className="text-[#B6D232] font-mono bg-slate-900 px-2 py-0.5 rounded">ggw2026admin</code>
+              </p>
             </div>
           </div>
         ) : (
@@ -559,6 +683,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('videos')}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${
+                    activeTab === 'videos' ? 'bg-[#340648] text-[#B6D232]' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Video className="w-4 h-4" />
+                    <span>Vidéos & Médias</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold">{videos.length}</span>
+                </button>
+
+                <button
                   onClick={() => setActiveTab('settings')}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${
                     activeTab === 'settings' ? 'bg-[#340648] text-[#B6D232]' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
@@ -566,7 +703,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 >
                   <div className="flex items-center gap-2.5">
                     <Settings className="w-4 h-4" />
-                    <span>Paramètres & Tarifs</span>
+                    <span>Paramètres Entreprise</span>
                   </div>
                 </button>
               </div>
@@ -1135,27 +1272,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-300 mb-1">Prix Estimatif ($ USD - optionnel)</label>
-                          <input
-                            type="number"
-                            value={newProdPrice || ''}
-                            onChange={(e) => setNewProdPrice(Number(e.target.value))}
-                            placeholder="Ex: 250 (laisser vide pour Sur Devis)"
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-slate-300 mb-1">Description succincte</label>
-                          <input
-                            type="text"
-                            value={newProdDesc}
-                            onChange={(e) => setNewProdDesc(e.target.value)}
-                            placeholder="Description succincte du produit..."
-                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 mb-1">Description succincte du produit</label>
+                        <textarea
+                          rows={2}
+                          value={newProdDesc}
+                          onChange={(e) => setNewProdDesc(e.target.value)}
+                          placeholder="Description succincte du produit, usages recommandés, finitions..."
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500"
+                        />
                       </div>
 
                       {/* ZONE D'IMPORTATION MULTI-PHOTOS & VIDÉOS */}
@@ -1638,17 +1763,212 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* TAB 6: PROJECTS */}
               {activeTab === 'projects' && (
                 <div className="space-y-6">
-                  <div>
-                    <h3 className="text-xl font-black text-white">Galerie Réalisations ({projects.length})</h3>
-                    <p className="text-xs text-slate-400">Gérez les projets présentés sur le site avec slider Avant / Après</p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-black text-white">Galerie Réalisations ({projects.length})</h3>
+                      <p className="text-xs text-slate-400">Gérez les projets présentés sur le site avec slider Avant / Après</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingProject(!isAddingProject)}
+                      className="bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer w-fit"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{isAddingProject ? 'Fermer le formulaire' : 'Ajouter une Réalisation'}</span>
+                    </button>
                   </div>
+
+                  {/* Form to add a project */}
+                  {isAddingProject && (
+                    <form onSubmit={handleAddProjectSubmit} className="bg-slate-800 p-5 rounded-2xl border-2 border-[#B6D232]/40 space-y-4 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                        <h4 className="text-sm font-black text-[#B6D232] flex items-center gap-2">
+                          <FolderKanban className="w-4 h-4" />
+                          <span>Nouvelle Réalisation de Chantier</span>
+                        </h4>
+                        <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded">Admin GGW</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Titre de la Réalisation *</label>
+                          <input
+                            type="text"
+                            required
+                            value={newProjTitle}
+                            onChange={(e) => setNewProjTitle(e.target.value)}
+                            placeholder="Ex: Baie Vitrée Coulissante Aluminium - Villa Bellevue"
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Catégorie</label>
+                          <select
+                            value={newProjCategory}
+                            onChange={(e) => setNewProjCategory(e.target.value as any)}
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          >
+                            <option value="residentiel">Résidentiel</option>
+                            <option value="commercial">Commercial</option>
+                            <option value="renovation">Rénovation</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Localisation / Ville</label>
+                          <input
+                            type="text"
+                            value={newProjLocation}
+                            onChange={(e) => setNewProjLocation(e.target.value)}
+                            placeholder="Ex: Petit-Goâve, Haïti"
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Description succincte</label>
+                          <input
+                            type="text"
+                            value={newProjDesc}
+                            onChange={(e) => setNewProjDesc(e.target.value)}
+                            placeholder="Détails des travaux, profilés utilisés..."
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Before / After toggle */}
+                      <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-700 space-y-3">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-white">
+                          <input
+                            type="checkbox"
+                            checked={newProjHasBeforeAfter}
+                            onChange={(e) => setNewProjHasBeforeAfter(e.target.checked)}
+                            className="w-4 h-4 rounded text-[#B6D232] focus:ring-0"
+                          />
+                          <span>Projet avec comparaison interactive Avant / Après (Slider)</span>
+                        </label>
+
+                        {newProjHasBeforeAfter ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-300 mb-1">Photo AVANT (Travaux)</label>
+                              <div className="space-y-1.5">
+                                <input
+                                  type="text"
+                                  value={newProjBeforeImg}
+                                  onChange={(e) => setNewProjBeforeImg(e.target.value)}
+                                  placeholder="URL photo avant..."
+                                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                                />
+                                <label className="inline-flex items-center gap-1 text-[11px] text-[#B6D232] hover:underline cursor-pointer">
+                                  <Upload className="w-3 h-3" />
+                                  <span>Téléverser fichier</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const processed = await processImportedFile(file);
+                                        setNewProjBeforeImg(processed.url);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-bold text-slate-300 mb-1">Photo APRÈS (Finition GGW)</label>
+                              <div className="space-y-1.5">
+                                <input
+                                  type="text"
+                                  value={newProjAfterImg}
+                                  onChange={(e) => setNewProjAfterImg(e.target.value)}
+                                  placeholder="URL photo après..."
+                                  className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                                />
+                                <label className="inline-flex items-center gap-1 text-[11px] text-[#B6D232] hover:underline cursor-pointer">
+                                  <Upload className="w-3 h-3" />
+                                  <span>Téléverser fichier</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const processed = await processImportedFile(file);
+                                        setNewProjAfterImg(processed.url);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-xs font-bold text-slate-300 mb-1">Photo Principale du Projet</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={newProjMainImg}
+                                onChange={(e) => setNewProjMainImg(e.target.value)}
+                                placeholder="URL de la photo ou téléverser..."
+                                className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                              />
+                              <label className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs px-3 py-2 rounded-lg cursor-pointer">
+                                <Upload className="w-3.5 h-3.5" />
+                                <span>Fichier</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const processed = await processImportedFile(file);
+                                      setNewProjMainImg(processed.url);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingProject(false)}
+                          className="px-4 py-2 bg-slate-700 text-slate-300 text-xs font-bold rounded-xl cursor-pointer"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] text-xs font-black rounded-xl shadow cursor-pointer"
+                        >
+                          Enregistrer la Réalisation
+                        </button>
+                      </div>
+                    </form>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {projects.map((proj) => (
                       <div key={proj.id} className="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
                         <div>
-                          <h4 className="font-extrabold text-sm text-white">{proj.title}</h4>
-                          <span className="text-xs text-[#B6D232] block mb-2">{proj.location} • {proj.category}</span>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-extrabold text-sm text-white">{proj.title}</h4>
+                            <span className="text-[10px] bg-slate-900 text-[#B6D232] px-2 py-0.5 rounded font-bold uppercase">{proj.category}</span>
+                          </div>
+                          <span className="text-xs text-slate-400 block mb-2">{proj.location} • {proj.date}</span>
                           <p className="text-xs text-slate-300 line-clamp-2">{proj.description}</p>
                         </div>
                         <div className="pt-3 mt-3 border-t border-slate-700 flex items-center justify-between text-xs">
@@ -1690,17 +2010,186 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
               )}
 
-              {/* TAB 7: SETTINGS & GLASS PRICES */}
+              {/* TAB 7: VIDEOS & MEDIAS */}
+              {activeTab === 'videos' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-black text-white">Vidéos de l'Atelier & Chantiers ({videos.length})</h3>
+                      <p className="text-xs text-slate-400">Gérez les vidéos de fabrication et d'installation présentées sur le site</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingVideo(!isAddingVideo)}
+                      className="bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black text-xs px-4 py-2.5 rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer w-fit"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>{isAddingVideo ? 'Fermer' : 'Ajouter une Vidéo'}</span>
+                    </button>
+                  </div>
+
+                  {/* Add Video Form */}
+                  {isAddingVideo && (
+                    <form onSubmit={handleAddVideoSubmit} className="bg-slate-800 p-5 rounded-2xl border-2 border-[#B6D232]/40 space-y-4 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-700 pb-2">
+                        <h4 className="text-sm font-black text-[#B6D232] flex items-center gap-2">
+                          <Video className="w-4 h-4" />
+                          <span>Nouvelle Vidéo</span>
+                        </h4>
+                        <span className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded">Atelier & Chantiers</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Titre de la Vidéo *</label>
+                          <input
+                            type="text"
+                            required
+                            value={newVidTitle}
+                            onChange={(e) => setNewVidTitle(e.target.value)}
+                            placeholder="Ex: Assemblage d'une baie vitrée coulissante dans notre atelier"
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">Catégorie</label>
+                          <select
+                            value={newVidCategory}
+                            onChange={(e) => setNewVidCategory(e.target.value as any)}
+                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          >
+                            <option value="atelier">Atelier</option>
+                            <option value="fabrication">Fabrication</option>
+                            <option value="installation">Installation</option>
+                            <option value="presentation">Présentation</option>
+                            <option value="promo">Promotion</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 mb-1">URL de la Vidéo (YouTube ou lien MP4) *</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            required
+                            value={newVidUrl}
+                            onChange={(e) => setNewVidUrl(e.target.value)}
+                            placeholder="https://www.youtube.com/watch?v=... ou lien MP4"
+                            className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white"
+                          />
+                          <label className="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs px-3 py-2 rounded-lg cursor-pointer">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>Fichier vidéo</span>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const processed = await processImportedFile(file);
+                                  setNewVidUrl(processed.url);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-300 mb-1">Description</label>
+                        <textarea
+                          rows={2}
+                          value={newVidDesc}
+                          onChange={(e) => setNewVidDesc(e.target.value)}
+                          placeholder="Description succincte de ce qu'on voit dans la vidéo..."
+                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500"
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddingVideo(false)}
+                          className="px-4 py-2 bg-slate-700 text-slate-300 text-xs font-bold rounded-xl cursor-pointer"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] text-xs font-black rounded-xl shadow cursor-pointer"
+                        >
+                          Enregistrer la Vidéo
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* Videos Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {videos.map((vid) => (
+                      <div key={vid.id} className="bg-slate-800 p-4 rounded-2xl border border-slate-700 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-extrabold text-sm text-white line-clamp-1">{vid.title}</h4>
+                            <span className="text-[10px] bg-slate-900 text-[#B6D232] px-2 py-0.5 rounded font-bold uppercase">{vid.category}</span>
+                          </div>
+                          <p className="text-xs text-slate-300 line-clamp-2 mb-2">{vid.description}</p>
+                          <span className="text-[11px] text-slate-400 block font-mono truncate">{vid.videoUrl}</span>
+                        </div>
+
+                        <div className="pt-3 mt-3 border-t border-slate-700 flex items-center justify-between text-xs">
+                          <span className="text-slate-400">{vid.date || 'Atelier GGW'}</span>
+                          {videoToDeleteId === vid.id ? (
+                            <div className="flex items-center gap-1.5 bg-red-950/80 border border-red-700 px-2 py-0.5 rounded-lg">
+                              <span className="text-[10px] text-red-200 font-bold">Supprimer ?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  StorageService.deleteVideo(vid.id);
+                                  setVideoToDeleteId(null);
+                                }}
+                                className="text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Oui
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setVideoToDeleteId(null)}
+                                className="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Non
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setVideoToDeleteId(vid.id)}
+                              className="text-red-400 hover:text-red-300 text-xs cursor-pointer flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Supprimer</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 8: SETTINGS */}
               {activeTab === 'settings' && (
                 <form onSubmit={handleSaveSettings} className="space-y-6 max-w-3xl">
                   <div>
-                    <h3 className="text-xl font-black text-white">Paramètres Généraux & Grille Tarifaire</h3>
-                    <p className="text-xs text-slate-400">Coordonnées, slogan officiel et tarifs du calculateur de verre</p>
+                    <h3 className="text-xl font-black text-white">Paramètres de l'Entreprise</h3>
+                    <p className="text-xs text-slate-400">Coordonnées, slogan officiel, horaires et photo officielle du local et camion</p>
                   </div>
 
                   {settingsSavedMsg && (
                     <div className="bg-emerald-900/50 border border-emerald-500 text-emerald-300 p-3 rounded-xl text-xs font-bold">
-                      Paramètres et tarifs enregistrés avec succès !
+                      Paramètres enregistrés avec succès !
                     </div>
                   )}
 
@@ -1756,34 +2245,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white"
                         />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Glass Prices Configuration */}
-                  <div className="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4">
-                    <h4 className="font-black text-sm text-[#B6D232]">Tarifs Calculateur de Verre (USD / pied carré)</h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                      {Object.entries(editingSettings.glassPricePerSqFt).map(([k, v]) => (
-                        <div key={k}>
-                          <label className="block font-bold text-slate-300 mb-1 capitalize">{k}</label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              step="0.5"
-                              value={v}
-                              onChange={(e) => setEditingSettings({
-                                ...editingSettings,
-                                glassPricePerSqFt: {
-                                  ...editingSettings.glassPricePerSqFt,
-                                  [k]: Number(e.target.value)
-                                }
-                              })}
-                              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white font-bold"
-                            />
-                            <span className="absolute right-3 top-2 text-slate-400 font-bold">$</span>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </div>
 

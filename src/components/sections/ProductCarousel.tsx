@@ -171,12 +171,10 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
                 </div>
               )}
 
-              {/* Price badge if available */}
-              {current.price && (
-                <div className="absolute bottom-4 left-4 bg-[#B6D232] text-[#340648] font-black text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-lg border border-white">
-                  À partir de ${current.price} USD {current.priceUnit ? `/ ${current.priceUnit}` : ''}
-                </div>
-              )}
+              {/* Badge Fabrication sur mesure */}
+              <div className="absolute bottom-4 left-4 bg-[#B6D232] text-[#340648] font-black text-xs sm:text-sm px-4 py-1.5 rounded-full shadow-lg border border-white flex items-center gap-1.5">
+                <span>Fabrication sur mesure • Devis gratuit</span>
+              </div>
             </div>
 
             {/* Information Side (5 cols) */}

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   MapPin,
@@ -7,15 +7,10 @@ import {
   ArrowRight,
   Maximize2,
   SlidersHorizontal,
-  Upload,
-  Image as ImageIcon,
-  CheckCircle2,
-  Trash2
+  Image as ImageIcon
 } from 'lucide-react';
 import { Project, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
-import { StorageService } from '../../services/storage';
-import { processImportedFile } from '../../services/mediaService';
 
 interface ProjectsSectionProps {
   projects: Project[];
@@ -29,14 +24,10 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
   projects,
   lang,
   onOpenLightbox,
-  onOpenQuote,
-  onProjectsUpdated
+  onOpenQuote
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [sliderPositions, setSliderPositions] = useState<{ [key: string]: number }>({});
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).projects;
@@ -62,78 +53,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
     );
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setIsUploading(true);
-    setUploadSuccess(false);
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const processed = await processImportedFile(file);
-        const titleWithoutExt = processed.name || file.name.replace(/\.[^/.]+$/, "");
-
-        const newProj: Project = {
-          id: `proj-${Date.now()}-${i}`,
-          title: titleWithoutExt || `Réalisation ${projects.length + i + 1}`,
-          description: `Réalisation importée directement depuis votre appareil (${(file.size / (1024 * 1024)).toFixed(2)} Mo). Travaux de vitrerie et menuiserie aluminium sur mesure.`,
-          category: 'portes',
-          location: 'Borne Soldat, Petit-Goâve, Haïti',
-          date: new Date().toISOString().split('T')[0],
-          images: [
-            {
-              id: `img-${Date.now()}-${i}`,
-              url: processed.isVideo ? (processed.thumbnailUrl || processed.url) : processed.url,
-              caption: titleWithoutExt,
-              type: 'standard'
-            }
-          ],
-          hasBeforeAfter: false,
-          isFeatured: true,
-          client: 'Client Particulier'
-        };
-
-        StorageService.saveProject(newProj);
-      }
-
-      setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 4000);
-
-      if (onProjectsUpdated) {
-        onProjectsUpdated(StorageService.getProjects());
-      }
-    } catch (err) {
-      console.error('Erreur lors du chargement des photos:', err);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
-
-  const confirmDeleteProject = (id: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const updated = StorageService.deleteProject(id);
-    if (onProjectsUpdated) {
-      onProjectsUpdated(updated);
-    }
-    setDeletingId(null);
-  };
-
-  const handleClearAllProjects = () => {
-    projects.forEach(p => StorageService.deleteProject(p.id));
-    if (onProjectsUpdated) {
-      onProjectsUpdated([]);
-    }
-    setShowClearAllConfirm(false);
-  };
-
   const filteredProjects = activeCategory === 'all'
     ? projects
     : projects.filter(p => p.category === activeCategory);
@@ -145,17 +64,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
   return (
     <section id="realisations" className="py-16 md:py-24 bg-slate-900 text-white relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Hidden Native File Input targeting device camera / gallery / file picker */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          className="hidden"
-          onChange={handleFileChange}
-        />
-
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-10">
           <div className="inline-flex items-center gap-2 bg-[#B6D232]/20 text-[#B6D232] text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider mb-3 border border-[#B6D232]/30">
@@ -168,59 +76,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
           <p className="mt-2 text-sm sm:text-base text-slate-300 font-medium">
             {t.subtitle}
           </p>
-
-          {/* Device Import Action Button */}
-          <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black px-6 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2.5 cursor-pointer border-2 border-white"
-            >
-              <Upload className="w-5 h-5 text-[#340648]" />
-              <span className="text-sm">
-                {isUploading ? 'Chargement depuis votre appareil...' : 'Importer des vidéos et Photos'}
-              </span>
-            </button>
-
-            {projects.length > 0 && (
-              showClearAllConfirm ? (
-                <div className="flex items-center gap-2 bg-red-950/90 border border-red-500 px-4 py-2.5 rounded-2xl shadow-xl animate-fade-in">
-                  <span className="text-xs text-red-200 font-bold">Supprimer toutes les {projects.length} réalisations ?</span>
-                  <button
-                    type="button"
-                    onClick={handleClearAllProjects}
-                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-black px-3 py-1.5 rounded-xl cursor-pointer shadow"
-                  >
-                    Oui, tout supprimer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowClearAllConfirm(false)}
-                    className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-xl cursor-pointer"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowClearAllConfirm(true)}
-                  className="bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-800/80 font-bold px-4 py-3.5 rounded-2xl text-xs flex items-center gap-2 transition-colors cursor-pointer"
-                  title="Supprimer toutes les photos et réalisations"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Supprimer toutes les photos ({projects.length})</span>
-                </button>
-              )
-            )}
-          </div>
-
-          {uploadSuccess && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-emerald-900/80 text-emerald-300 text-xs font-black px-4 py-2 rounded-xl border border-emerald-500 animate-fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Vos photos et réalisations ont été importées avec succès depuis votre appareil !</span>
-            </div>
-          )}
         </div>
 
         {/* Category Filters */}
@@ -248,17 +103,10 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
             <div className="w-16 h-16 rounded-full bg-[#B6D232]/20 text-[#B6D232] flex items-center justify-center mx-auto mb-4 border border-[#B6D232]/30">
               <ImageIcon className="w-8 h-8 text-[#B6D232]" />
             </div>
-            <h3 className="text-lg font-black text-white mb-2">Aucune réalisation affichée pour le moment</h3>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium mb-6">
-              Cliquez sur le bouton ci-dessous pour importer vos photos et vidéos de chantiers directement depuis votre appareil.
+            <h3 className="text-lg font-black text-white mb-2">Nos réalisations seront affichées ici</h3>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium">
+              Les photos et projets de chantiers réalisés par l'équipe Global Glass and Windows sont mis à jour régulièrement.
             </p>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black px-6 py-3 rounded-xl text-xs shadow-md transition-all inline-flex items-center gap-2 cursor-pointer"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Importer des vidéos et Photos</span>
-            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -357,47 +205,6 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({
                           </div>
                         </div>
                       </div>
-                    )}
-
-                    {/* Delete button & in-app confirmation */}
-                    {deletingId === project.id ? (
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute top-3 right-3 z-30 bg-slate-950/95 border border-red-500/80 p-2.5 rounded-xl shadow-2xl flex flex-col gap-2 animate-fade-in"
-                      >
-                        <span className="text-[11px] font-bold text-white text-center">Supprimer cette photo ?</span>
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <button
-                            type="button"
-                            onClick={(e) => confirmDeleteProject(project.id, e)}
-                            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[10px] font-black rounded-lg cursor-pointer shadow"
-                          >
-                            Supprimer
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeletingId(null);
-                            }}
-                            className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-[10px] font-bold rounded-lg cursor-pointer"
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingId(project.id);
-                        }}
-                        className="absolute top-3 right-3 z-30 bg-red-600/90 hover:bg-red-600 text-white p-2 rounded-full shadow-lg opacity-90 sm:opacity-0 group-hover:opacity-100 transition-all hover:scale-110 cursor-pointer border border-white/30"
-                        title="Supprimer cette réalisation"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     )}
 
                     {/* Project Details */}

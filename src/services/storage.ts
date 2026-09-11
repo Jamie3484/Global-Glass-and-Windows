@@ -128,7 +128,12 @@ export const StorageService = {
 
   // Products
   getProducts(): Product[] {
-    return getStored<Product[]>(KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    const raw = getStored<Product[]>(KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    return raw.map(p => {
+      // Supprime les prix des produits du site
+      const { price, priceUnit, ...rest } = p;
+      return rest as Product;
+    });
   },
   saveProduct(product: Product): Product[] {
     const list = this.getProducts();

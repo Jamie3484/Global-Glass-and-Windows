@@ -320,6 +320,7 @@ export default function App() {
         products={products}
         categories={categories}
         projects={projects}
+        videos={videos}
         quotes={quotes}
         reviews={reviews}
         messages={messages}

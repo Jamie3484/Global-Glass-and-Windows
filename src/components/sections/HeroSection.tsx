@@ -1,19 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Phone,
   MapPin,
   Maximize2,
-  Upload,
-  Check,
   Building2,
-  ShieldCheck,
-  Mail,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 import { CompanySettings, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
-import { getSavedStorePhoto, uploadStorePhotoFile } from '../../utils/imageStorage';
+import { getSavedStorePhoto } from '../../utils/imageStorage';
 
 interface HeroSectionProps {
   settings: CompanySettings;
@@ -43,10 +39,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const [heroPhotoUrl, setHeroPhotoUrl] = useState<string>(() => {
     return propCoverPhotoUrl || localStorage.getItem('ggw_official_store_photo_v2') || '/assets/ggw_storefront_truck.jpg';
   });
-
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // Keep local state in sync if prop changes
   useEffect(() => {
@@ -80,36 +72,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     };
   }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Instant local preview
-    const objectUrl = URL.createObjectURL(file);
-    setHeroPhotoUrl(objectUrl);
-    if (onUpdateCoverPhoto) {
-      onUpdateCoverPhoto(objectUrl);
-    }
-    setIsUploading(true);
-
-    try {
-      const finalUrl = await uploadStorePhotoFile(file);
-      setHeroPhotoUrl(finalUrl);
-      if (onUpdateCoverPhoto) {
-        onUpdateCoverPhoto(finalUrl);
-      }
-      setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 4000);
-    } catch (err) {
-      console.error('Error saving image:', err);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   const handleOpenPhotoFullscreen = () => {
     if (onOpenLightbox) {
       onOpenLightbox(
@@ -136,16 +98,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       {/* Subtle atmospheric brand background glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-[#B6D232]/10 blur-3xl pointer-events-none rounded-full" />
       <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#340648]/40 blur-3xl pointer-events-none rounded-full" />
-
-      {/* Hidden file input for official photo upload */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        onChange={handleFileChange}
-        className="hidden"
-        id="hero-cover-image-input"
-      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
@@ -188,7 +140,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               id="hero-quote-btn"
               type="button"
               onClick={onOpenQuote}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] font-black text-sm sm:text-base px-7 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer border-2 border-white/20"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] font-black text-sm sm:text-base px-8 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer border-2 border-white/20"
             >
               <FileText className="w-5 h-5 text-[#340648]" />
               <span>DEMANDER UN DEVIS</span>
@@ -199,32 +151,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               id="hero-contact-btn"
               type="button"
               onClick={handleContactClick}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-bold text-sm sm:text-base px-6 py-3.5 rounded-2xl border border-white/30 hover:border-[#B6D232] transition-all backdrop-blur-md cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-bold text-sm sm:text-base px-7 py-3.5 rounded-2xl border border-white/30 hover:border-[#B6D232] transition-all backdrop-blur-md cursor-pointer"
             >
               <Phone className="w-5 h-5 text-[#B6D232]" />
               <span>NOUS CONTACTER</span>
             </button>
-
-            {/* Bouton Remplacer l'image (pour l'administrateur/propriétaire) */}
-            <button
-              id="hero-upload-store-btn"
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs text-slate-300 hover:text-white bg-black/30 hover:bg-black/50 px-4 py-3.5 rounded-2xl border border-white/15 transition cursor-pointer"
-              title="Importer une mise à jour directe de la photo officielle du local sans modification"
-            >
-              <Upload className="w-3.5 h-3.5 text-[#B6D232]" />
-              <span>{isUploading ? 'Chargement...' : 'Mettre à jour la photo'}</span>
-            </button>
           </div>
-
-          {uploadSuccess && (
-            <div className="mt-3 inline-flex items-center gap-2 bg-emerald-600/90 text-white text-xs font-bold px-4 py-1.5 rounded-full border border-emerald-400">
-              <Check className="w-3.5 h-3.5 text-white" />
-              <span>Photo officielle mise à jour avec succès dans le projet !</span>
-            </div>
-          )}
         </div>
 
         {/* 

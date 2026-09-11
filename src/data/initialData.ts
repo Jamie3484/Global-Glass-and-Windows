@@ -109,8 +109,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Serrure de sécurité à clé intégrée',
       'Roulements en acier inoxydable longue durée'
     ],
-    price: 320,
-    priceUnit: 'm² ou sur mesure',
     isAvailable: true,
     isFeatured: true,
     showOnHome: true,
@@ -150,8 +148,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Poignée ergonomique multi-points',
       'Grille de sécurité intégrée en option'
     ],
-    price: 185,
-    priceUnit: 'unité de base',
     isAvailable: true,
     isFeatured: true,
     showOnHome: true,
@@ -184,8 +180,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Traitement anti-buée et résistant à l’humidité',
       'Fixations invisibles renforcées incluses'
     ],
-    price: 95,
-    priceUnit: 'pièce',
     isAvailable: true,
     isFeatured: true,
     showOnHome: true,
@@ -218,8 +212,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Joint d’étanchéité magnétique et bas de porte anti-goutte',
       'Prise de mesure et découpe au millimètre près'
     ],
-    price: 450,
-    priceUnit: 'ensemble sur mesure',
     isAvailable: true,
     isFeatured: true,
     showOnHome: true,
@@ -252,8 +244,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Corps en aluminium coulé sous pression',
       'Testé sur plus de 500 000 cycles d’ouverture'
     ],
-    price: 65,
-    priceUnit: 'unité',
     isAvailable: true,
     isFeatured: true,
     showOnHome: true,
@@ -286,8 +276,6 @@ export const INITIAL_PRODUCTS: Product[] = [
       'Longueurs standards de 6 mètres ou coupes personnalisées',
       'Disponibilité en gros et au détail'
     ],
-    price: 45,
-    priceUnit: 'barre de 6m',
     isAvailable: true,
     isFeatured: false,
     showOnHome: true,

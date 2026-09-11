@@ -296,7 +296,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ settings, lang }
                     type="text"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    placeholder="Ex: Renseignement prix verre trempé 10mm"
+                    placeholder="Ex: Devis pour vitres ou portes coulissantes"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:border-[#340648] focus:outline-none"
                   />
                 </div>

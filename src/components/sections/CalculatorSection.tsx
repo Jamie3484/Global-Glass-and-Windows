@@ -50,11 +50,9 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
     { key: 'tempered10mm', label: 'Verre Trempé Sécurit 10mm', desc: 'Douches & garde-corps' },
   ];
 
-  // Price calculations
-  const pricePerSqFt = settings.glassPricePerSqFt[glassTypeKey] || 5.0;
+  // Surface calculations (dimensions in inches converted to square feet)
   const singleAreaSqFt = (lengthInches * widthInches) / 144;
   const totalAreaSqFt = singleAreaSqFt * quantity;
-  const totalEstimatedCost = totalAreaSqFt * pricePerSqFt;
 
   const selectedOption = glassOptions.find(o => o.key === glassTypeKey);
 
@@ -64,8 +62,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
       widthInches,
       quantity,
       glassType: selectedOption ? selectedOption.label : 'Verre sur mesure',
-      areaSqFt: Number(totalAreaSqFt.toFixed(2)),
-      estimatedCost: Math.round(totalEstimatedCost)
+      areaSqFt: Number(totalAreaSqFt.toFixed(2))
     });
   };
 
@@ -196,7 +193,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 >
                   {glassOptions.map((opt) => (
                     <option key={opt.key} value={opt.key}>
-                      {opt.label} (${settings.glassPricePerSqFt[opt.key] || 5}/pi²) — {opt.desc}
+                      {opt.label} — {opt.desc}
                     </option>
                   ))}
                 </select>
@@ -209,7 +206,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
               <div>
                 <div className="flex items-center justify-between border-b border-white/20 pb-3 mb-4">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                    Résultat du Calcul
+                    Spécifications Calculées
                   </span>
                   <span className="text-xs font-black bg-[#B6D232] text-[#340648] px-2.5 py-0.5 rounded-full">
                     Formule GGW
@@ -232,23 +229,23 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-300">
-                    <span>Tarif unitaire verre :</span>
-                    <span className="font-bold text-white">
-                      ${pricePerSqFt.toFixed(2)} USD / pi²
+                    <span>Type sélectionné :</span>
+                    <span className="font-bold text-white text-right">
+                      {selectedOption?.label}
                     </span>
                   </div>
                 </div>
 
-                {/* Big Estimated Price */}
+                {/* Surface Summary Box */}
                 <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center mb-6">
                   <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
-                    {t.estimatedCost}
+                    Surface Totale Requise
                   </span>
                   <div className="text-3xl sm:text-4xl font-black text-[#B6D232] my-1">
-                    ≈ ${Math.round(totalEstimatedCost)} <span className="text-base text-white font-normal">USD</span>
+                    {totalAreaSqFt.toFixed(2)} <span className="text-base text-white font-normal">pi²</span>
                   </div>
                   <span className="text-[10px] text-slate-300 italic">
-                    (Hors découpe spéciale, pose ou accessoires)
+                    Devis personnalisé gratuit calculé selon vos finitions et découpes
                   </span>
                 </div>
               </div>

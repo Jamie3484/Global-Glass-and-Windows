@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Truck, Store, Wrench, ShieldCheck, MapPin, Phone, ArrowRight, CheckCircle2, Maximize2, Upload, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Truck, Store, Wrench, ShieldCheck, MapPin, Phone, ArrowRight, CheckCircle2, Maximize2, Image as ImageIcon } from 'lucide-react';
 import { CompanySettings, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
-import { getSavedStorePhoto, uploadStorePhotoFile } from '../../utils/imageStorage';
+import { getSavedStorePhoto } from '../../utils/imageStorage';
 
 interface StoreShowcaseProps {
   settings: CompanySettings;
@@ -30,9 +30,6 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
   const currentLang = (lang && TRANSLATIONS[lang]) ? lang : 'fr';
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).company;
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [storePhotoUrl, setStorePhotoUrl] = useState<string>(() => {
     return propStorePhotoUrl || localStorage.getItem('ggw_official_store_photo_v2') || '/assets/ggw_storefront_truck.jpg';
   });
@@ -69,36 +66,6 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
       window.removeEventListener('ggw_storage_updated', handleStorageUpdate as EventListener);
     };
   }, []);
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Instant local preview
-    const objectUrl = URL.createObjectURL(file);
-    setStorePhotoUrl(objectUrl);
-    if (onUpdateStorePhoto) {
-      onUpdateStorePhoto(objectUrl);
-    }
-    setIsUploading(true);
-
-    try {
-      const finalUrl = await uploadStorePhotoFile(file);
-      setStorePhotoUrl(finalUrl);
-      if (onUpdateStorePhoto) {
-        onUpdateStorePhoto(finalUrl);
-      }
-      setUploadSuccess(true);
-      setTimeout(() => setUploadSuccess(false), 4000);
-    } catch (err) {
-      console.error('Error saving image to server:', err);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
 
   const handleOpenPhoto = () => {
     if (onOpenLightbox) {
@@ -172,34 +139,24 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
                 </div>
               </div>
 
-              {/* Bottom Bar: Action to Replace Image directly without modification */}
+              {/* Bottom Bar: Official Storefront Certification Badge */}
               <div className="bg-[#230331] p-3 px-4 flex items-center justify-between gap-2 text-white border-t border-white/10">
                 <div className="flex items-center gap-2 min-w-0">
                   <ImageIcon className="w-4 h-4 text-[#B6D232] flex-shrink-0" />
                   <span className="text-xs font-semibold text-slate-200 truncate">
-                    {uploadSuccess ? '✓ Photo officielle mise à jour !' : 'Photo officielle (Sans retouche)'}
+                    Photo officielle • Borne Soldat, Petit-Goâve
                   </span>
                 </div>
                 
-                <div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="inline-flex items-center gap-1.5 bg-[#B6D232] hover:bg-[#a5be2c] text-[#340648] text-xs font-black px-3 py-1.5 rounded-lg shadow transition-all cursor-pointer disabled:opacity-50"
-                    title="Sélectionnez votre fichier (ex: Local et Camion de GGW.png) pour le charger directement sans aucune modification"
-                  >
-                    <Upload className="w-3 h-3" />
-                    <span>{isUploading ? 'Chargement...' : 'Remplacer l’image'}</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenPhoto}
+                  className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-[#B6D232] text-xs font-bold px-3 py-1.5 rounded-lg border border-white/15 transition-all cursor-pointer"
+                  title="Agrandir la photo officielle en haute résolution"
+                >
+                  <Maximize2 className="w-3 h-3" />
+                  <span>Agrandir</span>
+                </button>
               </div>
             </div>
 
