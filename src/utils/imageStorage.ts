@@ -2,7 +2,7 @@
 
 const DB_NAME = 'ggw_assets_db';
 const STORE_NAME = 'photos';
-const PHOTO_KEY = 'ggw_official_store_photo';
+const PHOTO_KEY = 'ggw_official_store_photo_v2';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

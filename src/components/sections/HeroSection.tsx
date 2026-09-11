@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
-  Eye,
   Phone,
-  ArrowRight,
   MapPin,
   Maximize2,
   Upload,
   Check,
-  Building2
+  Building2,
+  ShieldCheck,
+  Mail,
+  Sparkles
 } from 'lucide-react';
-import { LogoBadge } from '../brand/LogoBadge';
 import { CompanySettings, Language } from '../../types';
 import { TRANSLATIONS } from '../../i18n/translations';
 import { getSavedStorePhoto, uploadStorePhotoFile } from '../../utils/imageStorage';
@@ -20,6 +20,7 @@ interface HeroSectionProps {
   lang: Language;
   onOpenQuote: () => void;
   onNavigateToProjects: () => void;
+  onNavigateToContact?: () => void;
   onNavigateToCalculator?: () => void;
   onOpenLightbox?: (imageUrl: string, title: string, caption?: string) => void;
   coverPhotoUrl?: string;
@@ -31,7 +32,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   lang,
   onOpenQuote,
   onNavigateToProjects,
-  onNavigateToCalculator,
+  onNavigateToContact,
   onOpenLightbox,
   coverPhotoUrl: propCoverPhotoUrl,
   onUpdateCoverPhoto
@@ -40,7 +41,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const t = (TRANSLATIONS[currentLang] || TRANSLATIONS.fr).hero;
 
   const [heroPhotoUrl, setHeroPhotoUrl] = useState<string>(() => {
-    return propCoverPhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+    return propCoverPhotoUrl || localStorage.getItem('ggw_official_store_photo_v2') || '/assets/ggw_storefront_truck.jpg';
   });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -64,7 +65,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     });
 
     const handleUpdate = (e: any) => {
-      const newUrl = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo');
+      const newUrl = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo_v2');
       if (newUrl) {
         setHeroPhotoUrl(newUrl);
       }
@@ -83,7 +84,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 1. Instant 0ms local preview using object URL so the image replaces the old one immediately
+    // Instant local preview
     const objectUrl = URL.createObjectURL(file);
     setHeroPhotoUrl(objectUrl);
     if (onUpdateCoverPhoto) {
@@ -92,7 +93,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     setIsUploading(true);
 
     try {
-      // 2. Persistent storage in IndexedDB (handles large images) and server upload
       const finalUrl = await uploadStorePhotoFile(file);
       setHeroPhotoUrl(finalUrl);
       if (onUpdateCoverPhoto) {
@@ -104,7 +104,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       console.error('Error saving image:', err);
     } finally {
       setIsUploading(false);
-      // Reset input value so selecting the same file or a different one triggers change reliably
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -115,242 +114,215 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     if (onOpenLightbox) {
       onOpenLightbox(
         heroPhotoUrl,
-        'Local Officiel et Camion de Service — GLOBAL GLASS AND WINDOWS',
-        'Rte Nle #2, Borne Soldat, Petit-Goâve, Haïti • Tél: (509) 4467-5506 / 3599-8564 / 2910-1818'
+        'Photo Officielle — GLOBAL GLASS AND WINDOWS',
+        'Local commercial & Véhicule de service • Route Nationale #2, Borne Soldat, Petit-Goâve, Haïti • Tél: (509) 4467-5506 / 3599-8564 / 2910-1818'
       );
     }
   };
 
+  const handleContactClick = () => {
+    if (onNavigateToContact) {
+      onNavigateToContact();
+    } else {
+      const el = document.getElementById('contact');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
-    <section id="accueil" className="relative min-h-[85vh] lg:min-h-[92vh] bg-slate-900 text-white flex items-center overflow-hidden">
-      {/* 
-        Image soumise comme fond (Background) de la page d'accueil sans modification aucune :
-        Couleurs réelles d'origine, aucune retouche, aucun filtre, aucun effet de flou.
-      */}
-      <div className="absolute inset-0 z-0">
-        <img
-          key={heroPhotoUrl}
-          src={heroPhotoUrl}
-          onError={(e) => {
-            const target = e.currentTarget;
-            if (!target.src.endsWith('/assets/ggw_storefront_truck.jpg')) {
-              target.src = '/assets/ggw_storefront_truck.jpg';
-            }
-          }}
-          alt="Local et Camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
-          className="w-full h-full object-cover object-center transition-opacity duration-300"
-          referrerPolicy="no-referrer"
-        />
-        {/* Voile d'ambiance très léger et transparent uniquement pour garantir le contraste du texte sans altérer l'image */}
-        <div className="absolute inset-0 bg-slate-950/30 pointer-events-none" />
-      </div>
+    <section id="accueil" className="relative bg-gradient-to-b from-[#190325] via-[#230331] to-[#160220] text-white pt-8 pb-16 lg:pt-12 lg:pb-24 overflow-hidden">
+      {/* Subtle atmospheric brand background glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-[#B6D232]/10 blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#340648]/40 blur-3xl pointer-events-none rounded-full" />
 
-      {/* Boutons d'accès rapide pour la photo réelle de l'établissement et remplacement direct */}
-      <div className="absolute top-4 right-4 sm:top-6 sm:right-8 z-20 flex flex-wrap items-center justify-end gap-2 max-w-[90vw]">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="hidden"
-          id="hero-cover-image-input"
-        />
+      {/* Hidden file input for official photo upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileChange}
+        className="hidden"
+        id="hero-cover-image-input"
+      />
 
-        {uploadSuccess && (
-          <span className="inline-flex items-center gap-1.5 bg-emerald-600/95 text-white text-xs font-bold px-3.5 py-1.5 rounded-full shadow-lg border border-emerald-400 backdrop-blur-sm animate-pulse">
-            <Check className="w-3.5 h-3.5 text-white" />
-            <span>Image remplacée avec succès !</span>
-          </span>
-        )}
-
-        {/* Miniature de prévisualisation cliquable */}
-        <div 
-          onClick={handleOpenPhotoFullscreen}
-          className="hidden sm:flex items-center gap-1.5 bg-black/40 hover:bg-black/60 p-1 pr-2.5 rounded-full border border-white/30 backdrop-blur-md cursor-pointer transition"
-          title="Cliquer pour agrandir la photo actuelle"
-        >
-          <img
-            src={heroPhotoUrl}
-            alt="Miniature"
-            className="w-6 h-6 rounded-full object-cover border border-[#B6D232]"
-          />
-          <span className="text-[11px] font-semibold text-slate-200">Photo actuelle</span>
-        </div>
-
-        {/* Bouton Remplacer l'image */}
-        <button
-          id="hero-replace-cover-btn"
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          className="inline-flex items-center gap-2 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] text-xs font-black px-3.5 py-2 rounded-full shadow-lg border border-white/60 backdrop-blur-md transition-all cursor-pointer disabled:opacity-50 hover:scale-105 active:scale-95"
-          title="Sélectionner une nouvelle photo pour remplacer l'image de couverture et la photo réelle"
-        >
-          <Upload className="w-3.5 h-3.5 text-[#340648]" />
-          <span>{isUploading ? 'Remplacement en cours...' : "Remplacer l'image"}</span>
-        </button>
-
-        {/* Bouton Agrandir / Photo réelle de l'établissement */}
-        <button
-          id="hero-view-cover-btn"
-          type="button"
-          onClick={handleOpenPhotoFullscreen}
-          className="inline-flex items-center gap-2 bg-[#230331]/85 hover:bg-[#230331] text-white text-xs font-bold px-3.5 py-2 rounded-full backdrop-blur-md border border-white/30 shadow-lg hover:shadow-xl transition-all cursor-pointer hover:scale-105 active:scale-95"
-          title="Agrandir la photo de l'établissement en plein écran"
-        >
-          <Maximize2 className="w-3.5 h-3.5 text-[#B6D232]" />
-          <span className="hidden sm:inline">Photo réelle de l'établissement</span>
-          <span className="sm:hidden">Agrandir</span>
-        </button>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20 relative z-10 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {/* En-tête officiel & Identité de l'entreprise */}
+        <div className="text-center max-w-4xl mx-auto mb-8 lg:mb-12">
           
-          {/* Left Column: Présentation très professionnelle avec carte flottante stylisée */}
-          <div className="lg:col-span-7 flex flex-col items-start text-left">
-            <div className="bg-[#230331]/85 sm:bg-[#230331]/80 backdrop-blur-md rounded-3xl p-6 sm:p-8 lg:p-10 border border-white/25 shadow-2xl w-full">
-              
-              {/* Petit-Goâve Official Badge */}
-              <div className="inline-flex items-center gap-2 bg-white/10 px-3.5 py-1.5 rounded-full border border-[#B6D232]/50 text-[#B6D232] text-xs font-extrabold shadow-sm mb-4">
-                <MapPin className="w-3.5 h-3.5 text-[#B6D232]" />
-                <span>{t.badgeLoc}</span>
-              </div>
-
-              {/* Main Brand Title */}
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight uppercase leading-[1.1] mb-4 text-white">
-                GLOBAL GLASS <br />
-                <span className="text-[#B6D232]">
-                  AND WINDOWS
-                </span>
-              </h1>
-
-              {/* Official Slogan Banner with Eye Motif */}
-              <div className="inline-flex items-center gap-3 bg-[#B6D232]/20 border-l-4 border-[#B6D232] px-4 py-2.5 rounded-r-2xl mb-5">
-                <Eye className="w-5 h-5 text-[#B6D232] flex-shrink-0" />
-                <p className="font-serif italic font-extrabold text-base sm:text-lg text-[#B6D232] leading-snug">
-                  "{settings.tagline || t.tagline}"
-                </p>
-              </div>
-
-              {/* Subtitle / Value Proposition */}
-              <p className="text-xs sm:text-sm lg:text-base text-slate-100 font-medium leading-relaxed mb-6">
-                {settings.taglineSecondary || t.subtitle}
-              </p>
-
-              {/* Main Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto mb-6">
-                <button
-                  onClick={onOpenQuote}
-                  className="w-full sm:w-auto bg-[#B6D232] hover:bg-[#a3be27] text-[#340648] font-black text-sm sm:text-base px-6 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer border-2 border-white/20"
-                >
-                  <FileText className="w-4 h-4 text-[#340648]" />
-                  <span>{t.ctaQuote}</span>
-                </button>
-
-                <button
-                  onClick={onNavigateToProjects}
-                  className="w-full sm:w-auto bg-white/15 hover:bg-white/25 text-white font-extrabold text-sm sm:text-base px-5 py-3.5 rounded-2xl border border-white/30 hover:border-[#B6D232] transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>{t.ctaProjects}</span>
-                  <ArrowRight className="w-4 h-4 text-[#B6D232]" />
-                </button>
-              </div>
-
-              {/* 3 Live Key Highlights Bar */}
-              <div className="grid grid-cols-3 gap-3 pt-5 border-t border-white/15 w-full">
-                <div className="flex flex-col">
-                  <span className="font-black text-base sm:text-xl text-[#B6D232]">100%</span>
-                  <span className="text-[10px] sm:text-xs text-slate-200 font-medium leading-tight mt-0.5">
-                    Sur Mesure
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-black text-base sm:text-xl text-[#B6D232]">7+</span>
-                  <span className="text-[10px] sm:text-xs text-slate-200 font-medium leading-tight mt-0.5">
-                    Catégories Pro
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-black text-base sm:text-xl text-[#B6D232]">Livraison</span>
-                  <span className="text-[10px] sm:text-xs text-slate-200 font-medium leading-tight mt-0.5">
-                    Camion Dédié
-                  </span>
-                </div>
-              </div>
-
-            </div>
+          {/* Badge de localisation et certification */}
+          <div className="inline-flex items-center gap-2 bg-white/10 border border-[#B6D232]/40 px-4 py-1.5 rounded-full text-xs font-bold text-[#B6D232] shadow-sm mb-4 backdrop-blur-md">
+            <Building2 className="w-3.5 h-3.5 text-[#B6D232]" />
+            <span>Local Officiel & Siège Social • Route Nationale #2, Borne Soldat, Petit-Goâve</span>
           </div>
 
-          {/* Right Column: Visual Brand Badge & Interactive Elements */}
-          <div className="lg:col-span-5 flex flex-col items-center justify-center relative">
-            
-            {/* Official Circular Brand Badge from Logo profil.png */}
-            <div className="relative group">
-              <div className="absolute -inset-2 rounded-full bg-[#B6D232] opacity-30 blur-xl group-hover:opacity-50 transition-opacity" />
-              <LogoBadge
-                className="transform transition-transform duration-500 group-hover:scale-102 cursor-pointer"
-                onClick={onOpenQuote}
-              />
-            </div>
+          {/* Titre Principal */}
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight uppercase text-white leading-tight mb-3">
+            GLOBAL GLASS <span className="text-[#B6D232]">AND WINDOWS</span>
+          </h1>
 
-            {/* Carte Photo Réelle de l'Établissement & Camion (Directement visible en couverture) */}
-            <div className="mt-5 w-full max-w-sm bg-[#230331]/90 backdrop-blur-md rounded-2xl p-3 border-2 border-[#B6D232]/50 shadow-2xl overflow-hidden group">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <span className="text-[11px] font-black text-[#B6D232] flex items-center gap-1.5 uppercase tracking-wider">
-                  <Building2 className="w-3.5 h-3.5" />
-                  Photo réelle de l'établissement
+          {/* Sous-titre officiel demandé */}
+          <p className="text-lg sm:text-2xl font-extrabold text-slate-100 mb-4 tracking-wide">
+            Vente, fabrication & pose sur mesure
+          </p>
+
+          {/* Liste des prestations officielles */}
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm md:text-base font-semibold text-[#B6D232] mb-6">
+            <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10 text-slate-100">Vitres</span>
+            <span className="text-white/40">•</span>
+            <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10 text-slate-100">Miroirs</span>
+            <span className="text-white/40">•</span>
+            <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10 text-slate-100">Fenêtres</span>
+            <span className="text-white/40">•</span>
+            <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10 text-slate-100">Portes en verre</span>
+            <span className="text-white/40">•</span>
+            <span className="bg-white/10 px-3 py-1 rounded-full border border-white/10 text-slate-100">Solutions aluminium</span>
+          </div>
+
+          {/* Boutons d'action officiels demandés */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            {/* Bouton Principal: DEMANDER UN DEVIS */}
+            <button
+              id="hero-quote-btn"
+              type="button"
+              onClick={onOpenQuote}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] font-black text-sm sm:text-base px-7 py-3.5 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 cursor-pointer border-2 border-white/20"
+            >
+              <FileText className="w-5 h-5 text-[#340648]" />
+              <span>DEMANDER UN DEVIS</span>
+            </button>
+
+            {/* Bouton Secondaire: NOUS CONTACTER */}
+            <button
+              id="hero-contact-btn"
+              type="button"
+              onClick={handleContactClick}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-bold text-sm sm:text-base px-6 py-3.5 rounded-2xl border border-white/30 hover:border-[#B6D232] transition-all backdrop-blur-md cursor-pointer"
+            >
+              <Phone className="w-5 h-5 text-[#B6D232]" />
+              <span>NOUS CONTACTER</span>
+            </button>
+
+            {/* Bouton Remplacer l'image (pour l'administrateur/propriétaire) */}
+            <button
+              id="hero-upload-store-btn"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 text-xs text-slate-300 hover:text-white bg-black/30 hover:bg-black/50 px-4 py-3.5 rounded-2xl border border-white/15 transition cursor-pointer"
+              title="Importer une mise à jour directe de la photo officielle du local sans modification"
+            >
+              <Upload className="w-3.5 h-3.5 text-[#B6D232]" />
+              <span>{isUploading ? 'Chargement...' : 'Mettre à jour la photo'}</span>
+            </button>
+          </div>
+
+          {uploadSuccess && (
+            <div className="mt-3 inline-flex items-center gap-2 bg-emerald-600/90 text-white text-xs font-bold px-4 py-1.5 rounded-full border border-emerald-400">
+              <Check className="w-3.5 h-3.5 text-white" />
+              <span>Photo officielle mise à jour avec succès dans le projet !</span>
+            </div>
+          )}
+        </div>
+
+        {/* 
+          CONTENEUR OFFICIEL DE LA PHOTO DU LOCAL ET DU CAMION
+          Règles strictes respectées :
+          - Les pixels de l'image ne sont JAMAIS modifiés ni retouchés par IA.
+          - object-fit: contain et ratio naturel : l'image originale reste intégrale,
+            aucune partie (enseigne, camion, téléphones, générateur, bâtiment) n'est recadrée.
+          - Le conteneur HTML/CSS offre une mise en valeur moderne et responsive.
+        */}
+        <div className="max-w-6xl mx-auto">
+          <div className="relative rounded-2xl sm:rounded-3xl border-2 sm:border-4 border-[#B6D232]/60 bg-slate-950 shadow-2xl overflow-hidden group">
+            
+            {/* Barre de titre supérieure de l'image */}
+            <div className="bg-[#230331] px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 text-xs">
+              <div className="flex items-center gap-2 text-[#B6D232] font-bold">
+                <ShieldCheck className="w-4 h-4 text-[#B6D232]" />
+                <span className="uppercase tracking-wider">Photo Officielle du Local & du Véhicule de Service</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300 text-[11px] hidden sm:inline">
+                  Rte Nle #2, Borne Soldat, Petit-Goâve
                 </span>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="text-[11px] font-bold text-white/90 hover:text-[#B6D232] flex items-center gap-1 cursor-pointer transition"
+                  onClick={handleOpenPhotoFullscreen}
+                  className="inline-flex items-center gap-1.5 bg-[#B6D232] hover:bg-[#a6c22a] text-[#340648] text-[11px] font-black px-3 py-1 rounded-full cursor-pointer transition shadow-sm"
+                  title="Agrandir en plein écran"
                 >
-                  <Upload className="w-3 h-3" />
-                  <span>Remplacer</span>
+                  <Maximize2 className="w-3 h-3 text-[#340648]" />
+                  <span>Agrandir</span>
                 </button>
-              </div>
-
-              <div 
-                onClick={handleOpenPhotoFullscreen}
-                className="relative aspect-[16/10] w-full rounded-xl overflow-hidden cursor-pointer border border-white/20 bg-slate-950"
-                title="Cliquer pour agrandir la photo en plein écran"
-              >
-                <img
-                  key={heroPhotoUrl}
-                  src={heroPhotoUrl}
-                  alt="Photo réelle de l'établissement et camion GGW à Petit-Goâve"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <span className="bg-[#340648]/90 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-[#B6D232] shadow-lg">
-                    <Maximize2 className="w-3.5 h-3.5 text-[#B6D232]" />
-                    Plein écran
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Bottom Quick Call info pill */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3 bg-[#230331]/85 backdrop-blur-md px-5 py-2.5 rounded-2xl border border-white/20 text-xs text-slate-100 shadow-xl">
-              <span className="text-slate-300 font-medium">Ligne directe :</span>
-              <a
-                href={`tel:${settings.phone1.replace(/[^0-9+]/g, '')}`}
-                className="font-black text-[#B6D232] hover:underline flex items-center gap-1"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>{settings.phone1}</span>
-              </a>
-              <span className="text-white/30">•</span>
-              <span className="text-slate-200 font-semibold text-[11px]">
-                Borne Soldat, Petit-Goâve
-              </span>
+            {/* Cadre d'affichage de l'image originale sans modification */}
+            <div 
+              onClick={handleOpenPhotoFullscreen}
+              className="relative w-full bg-slate-950 flex items-center justify-center p-1 sm:p-2 cursor-pointer"
+              title="Cliquer pour voir la photo officielle en plein écran haute résolution"
+            >
+              <img
+                key={heroPhotoUrl}
+                src={heroPhotoUrl}
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (!target.src.endsWith('/assets/ggw_storefront_truck.jpg')) {
+                    target.src = '/assets/ggw_storefront_truck.jpg';
+                  }
+                }}
+                alt="Local officiel et camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
+                className="w-full h-auto max-h-[75vh] object-contain mx-auto block transition-transform duration-300 group-hover:scale-[1.005]"
+                referrerPolicy="no-referrer"
+              />
+
+              {/* Bouton flottant de zoom au survol */}
+              <div className="absolute bottom-4 right-4 bg-black/70 hover:bg-black/90 text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/30 backdrop-blur-md opacity-90 group-hover:opacity-100 transition flex items-center gap-1.5 shadow-lg">
+                <Maximize2 className="w-3.5 h-3.5 text-[#B6D232]" />
+                <span className="hidden sm:inline">Plein écran haute résolution</span>
+              </div>
+            </div>
+
+            {/* Pied de photo avec coordonnées visibles et vérifiables */}
+            <div className="bg-[#190325] px-4 py-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-200">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#B6D232] flex-shrink-0" />
+                <span className="font-semibold">
+                  Route Nationale #2, Borne Soldat, Petit-Goâve, Haïti
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-xs">
+                <span className="text-slate-400">Lignes directes :</span>
+                <a
+                  href={`tel:${settings.phone1.replace(/[^0-9+]/g, '')}`}
+                  className="font-bold text-[#B6D232] hover:underline"
+                >
+                  {settings.phone1}
+                </a>
+                <span className="text-white/20">•</span>
+                <a
+                  href={`tel:${settings.phone2.replace(/[^0-9+]/g, '')}`}
+                  className="font-bold text-[#B6D232] hover:underline"
+                >
+                  {settings.phone2}
+                </a>
+                <span className="text-white/20">•</span>
+                <a
+                  href={`tel:${settings.phone3.replace(/[^0-9+]/g, '')}`}
+                  className="font-bold text-[#B6D232] hover:underline"
+                >
+                  {settings.phone3}
+                </a>
+              </div>
             </div>
 
           </div>
-
         </div>
+
       </div>
     </section>
   );

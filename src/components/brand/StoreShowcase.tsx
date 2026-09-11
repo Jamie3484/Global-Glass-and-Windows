@@ -34,7 +34,7 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [storePhotoUrl, setStorePhotoUrl] = useState<string>(() => {
-    return propStorePhotoUrl || localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+    return propStorePhotoUrl || localStorage.getItem('ggw_official_store_photo_v2') || '/assets/ggw_storefront_truck.jpg';
   });
 
   // Keep local state in sync if prop changes
@@ -54,7 +54,7 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
     });
 
     const handleStorageUpdate = (e: any) => {
-      const newUrl = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo');
+      const newUrl = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo_v2');
       if (newUrl) {
         setStorePhotoUrl(newUrl);
       }
@@ -123,10 +123,10 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
           <div className="lg:col-span-6 relative">
             <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-[#340648] bg-slate-900 group">
               {/* Photo representation of the physical shop and service truck in Petit-Goâve */}
-              {/* Aspect ratio preserves the panoramic view of both storefront and truck */}
+              {/* Aspect ratio preserves the panoramic view of both storefront and truck without cropping */}
               <div 
                 onClick={handleOpenPhoto}
-                className="relative aspect-[16/9] w-full overflow-hidden cursor-pointer bg-slate-950"
+                className="relative w-full overflow-hidden cursor-pointer bg-slate-950 flex items-center justify-center p-1 sm:p-2 min-h-[260px]"
                 title="Cliquer pour afficher la photo en grand format"
               >
                 <img
@@ -138,7 +138,7 @@ export const StoreShowcase: React.FC<StoreShowcaseProps> = ({
                     }
                   }}
                   alt="Local officiel et camion de service GLOBAL GLASS AND WINDOWS à Petit-Goâve"
-                  className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]"
+                  className="w-full h-auto max-h-[460px] object-contain object-center transition-transform duration-500 group-hover:scale-[1.01]"
                   referrerPolicy="no-referrer"
                 />
 

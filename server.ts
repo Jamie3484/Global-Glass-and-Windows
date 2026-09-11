@@ -76,10 +76,14 @@ function checkAndSyncStoreImage(): string | null {
           const destJpg = path.join(rootDir, 'public', 'assets', 'ggw_storefront_truck.jpg');
           const destSrcJpg = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1788459796152.jpg');
           const destSrcJpg2 = path.join(rootDir, 'src', 'assets', 'images', 'ggw_storefront_truck_1789069344264.jpg');
+          const distJpg = path.join(rootDir, 'dist', 'assets', 'ggw_storefront_truck.jpg');
           fs.copyFileSync(src, destJpg);
           if (fs.existsSync(path.dirname(destSrcJpg))) {
             fs.copyFileSync(src, destSrcJpg);
             fs.copyFileSync(src, destSrcJpg2);
+          }
+          if (fs.existsSync(path.dirname(distJpg))) {
+            fs.copyFileSync(src, distJpg);
           }
           return src;
         }

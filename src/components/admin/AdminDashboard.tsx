@@ -112,7 +112,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetSuccessMsg, setResetSuccessMsg] = useState(false);
   const [adminStorePhoto, setAdminStorePhoto] = useState<string>(() => {
-    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+    return localStorage.getItem('ggw_official_store_photo_v2') || '/assets/ggw_storefront_truck.jpg';
   });
   const [storePhotoMsg, setStorePhotoMsg] = useState('');
 
@@ -1839,8 +1839,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 const reader = new FileReader();
                                 reader.onload = async (evt) => {
                                   const base64 = evt.target?.result as string;
-                                  if (base64) {
+                                   if (base64) {
                                     setAdminStorePhoto(base64);
+                                    localStorage.setItem('ggw_official_store_photo_v2', base64);
                                     localStorage.setItem('ggw_official_store_photo', base64);
                                     window.dispatchEvent(new Event('ggw_storage_updated'));
                                     try {
@@ -1864,6 +1865,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <button
                             type="button"
                             onClick={() => {
+                              localStorage.removeItem('ggw_official_store_photo_v2');
                               localStorage.removeItem('ggw_official_store_photo');
                               setAdminStorePhoto('/assets/ggw_storefront_truck.jpg?t=' + Date.now());
                               window.dispatchEvent(new Event('ggw_storage_updated'));

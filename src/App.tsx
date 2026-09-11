@@ -85,7 +85,7 @@ export default function App() {
 
   // Official Storefront Photo State
   const [officialStorePhoto, setOfficialStorePhoto] = useState<string>(() => {
-    return localStorage.getItem('ggw_official_store_photo') || '/assets/ggw_storefront_truck.jpg';
+    return localStorage.getItem('ggw_official_store_photo_v2') || '/assets/ggw_storefront_truck.jpg';
   });
 
   // Subscribe to storage updates for real-time reactivity
@@ -98,7 +98,7 @@ export default function App() {
     });
 
     const handlePhotoUpdate = (e: any) => {
-      const url = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo');
+      const url = e?.detail?.photoUrl || localStorage.getItem('ggw_official_store_photo_v2');
       if (url) {
         setOfficialStorePhoto(url);
       }
@@ -188,6 +188,7 @@ export default function App() {
           lang={lang}
           onOpenQuote={() => handleOpenQuote()}
           onNavigateToProjects={handleNavigateToProjects}
+          onNavigateToContact={handleNavigateToContact}
           onOpenLightbox={handleOpenLightbox}
           coverPhotoUrl={officialStorePhoto}
           onUpdateCoverPhoto={(url) => setOfficialStorePhoto(url)}
